@@ -15,8 +15,23 @@ import pandas as pd
 import json
 from google.oauth2 import service_account
 from pprint import pprint
-import aug23_goalhack
+from aug23_goalhack import get_students
 
+"""
+Data Flow
+1. Access Zoom API to get meeting/webinar participants - done
+2. Pull Data from Zoom and store email : name key/value pairs in Google Sheet - done
+3. Access Thinkific API to get current students/members
+4. Pull Data from Thinkific and store email : name key/value pairs in separate Google Sheet
+5. Compare the Zoom list to Thinkific list
+    If someone is in both lists - they are a already student/member - ignore these people - will be deleted from Zoom list
+    If someone is in Zoom list but NOT Thinkific - they are not yet a student/member - want to email these people
+        Should I keep the original Zoom List and just create a new list to push to MailChimp??
+            Is there reason to keep the list with all Zoom meeting/webinar participants before removing members
+6. Access MailChimp API to email people who are not yet members (in Zoom list ONLY)
+7. Push email : name key/value pairs to MailChimp (this will just be the edited Zoom list with the members removed) 
+Automate the report so that it can be run every week
+"""
 
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly', 'https://www.googleapis.com/auth/drive',
@@ -31,16 +46,6 @@ with open('credentials.json') as source:
     info = json.load(source)
 credentials = service_account.Credentials.from_service_account_info(info)
 # client = pygsheets.authorize(service_account_file='credentials.json')
-
-with open('zoom_student_info.json') as source:
-    student_info = json.load(source)
-print(type(student_info))
-
-
-for email, name in student_info:
-    email = student_info
-    name = student_info
-    print(email, name)
 
 
 def main():
@@ -60,10 +65,14 @@ def main():
     # sort the worksheet by Name Column in Ascending order
     sorted_worksheet = worksheet.sort_range(start='A2', end='B6', basecolumnindex=0, sortorder='ASCENDING')
 
+    # run the function from aug23_goalhack to get all the student information
+    student_email_name = get_students()
+
     # insert a new row with given values
-    # TODO: Need help here to get email and name key/values from dictionary in json file
-    # need to figure out why each student is a dictionary and how to parse through it
-    new_row = worksheet.insert_rows(1, values=[student_info[0], student_info[1]])
+    for student in student_email_name:
+        email = student[0]
+        name = student[1]
+        new_row = worksheet.insert_rows(1, values=[email, name])
 
     # get all values currently in the spreadsheet
     all_values = worksheet.get_all_values(majdim='ROWS', include_tailing_empty=False)
@@ -124,6 +133,18 @@ Below - Code for later to use to compare Zoom List to Thinkific List
 #     return should_email
 #     # email address and names left in should_email will be stored in the list for MailChimp
 
+
+"""
+How to use the Zoom API
+1. Use the Meeting ID to get Meeting/ Webinar Info in order to get the UUID of each meeting instance
+2. Use the UUID to get the specific info for each separate meeting/webinar to get the participants
+
+Can you get specific meeting information from more than 1 UUID at a time?
+How?
+Ex using Goal Hack meetings
+Can I create a function to get all of the instances of each weekly meeting
+Create a separate function calling the first to get the participants of all the meetings?
+"""
 
 # TODO: How to automate report??
 """
