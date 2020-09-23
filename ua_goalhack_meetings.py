@@ -35,8 +35,5 @@ def get_meetings():
     return goalhack_uuid
 
 
-"""
-Currently printing out a list of dictionaries 
-
-"""
 get_meetings()
+# print(get_meetings())

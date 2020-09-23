@@ -15,7 +15,8 @@ import pandas as pd
 import json
 from google.oauth2 import service_account
 from pprint import pprint
-from aug23_goalhack import get_students
+from aug23_goalhack import get_students, get_all_goalhack_participants
+
 
 """
 Data Flow
@@ -82,9 +83,19 @@ def main():
 
     # print(all_values)
 
+    """
+    Use a try/except
+    Check if a sheet named "Trading Bot Participants" already exists
+    If it exists 
+        add the email addresses and names in that sheet
+    If it does not exist
+        create a new sheet named "Trading Bot Participants
+        then add the email addresses and names in that sheet
+    """
     # # Create a new sheet in the UA Zoom Folder names GoalHack Participants
     # new_sheet = client.create(title="GoalHack Participants", folder="1cIjZbTLwNEDo4YdknD8bUu9VPx-Ky7I-")
     # new_worksheet = new_sheet.add_worksheet(title="Aug-30-20", cols=2)
+
 
 # TODO: Edit to get dictionary from get_students() function in aug23_goalhack.py
 """
