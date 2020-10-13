@@ -1,6 +1,16 @@
 """
 Get a list of everyone who is currently signed up as a student/member
 
+How to use the Zoom API
+1. Use the Meeting ID to get Meeting/ Webinar Info in order to get the UUID of each meeting instance
+2. Use the UUID to get the specific info for each separate meeting/webinar to get the participants
+
+Can you get specific meeting information from more than 1 UUID at a time?
+How?
+Ex using Goal Hack meetings
+Can I create a function to get all of the instances of each weekly meeting
+Create a separate function calling the first to get the participants of all the meetings?
+
 """
 import requests
 import json
@@ -14,7 +24,8 @@ headers = {
 params = (
     ('page', '1'),
     # as of 9/21 there are a total of 17962 users
-    ('limit', '20000'),
+    ('limit', '20000')
+    # ('limit', '500')
 )
 
 response = requests.get('https://api.thinkific.com/api/public/v1/users', headers=headers, params=params)
@@ -38,4 +49,4 @@ def get_members():
 
 
 get_members()
-print(get_members())
+# print(get_members())

@@ -21,7 +21,7 @@ fragment='')
 uuids = get_meetings()
 
 
-# function to use the uuids from above and use them to create a new url for each uuid
+#   function to use the uuids from above and use them to create a new url for each uuid
 def get_urls():
     new_url_with_uuid = []
     for ids in uuids:
@@ -35,7 +35,7 @@ def get_urls():
 get_urls()
 # print(get_urls())
 
-# this will call the function to get the urls created above
+#   this will call the function to get the urls created above
 url = str(get_urls())
 
 payload = {}
@@ -45,7 +45,7 @@ headers = {
 }
 
 
-# function to get the email and name who attended for each meeting
+#   function to get the email and name who attended for each meeting
 def get_students():
     participants = parsed_response["participants"]
     student_email_name = []
@@ -56,7 +56,7 @@ def get_students():
     return student_email_name
 
 
-# for each url created above, parse through the url then run the function to get the students
+#   for each url created above, parse through the url then run the function to get the students
 for urls in get_urls():
     response = requests.request("GET", urls, headers=headers, data=payload)
     # print(response.text.encode('utf8'))
@@ -64,7 +64,7 @@ for urls in get_urls():
     parsed_response = json.loads(zoom_data)
     # print(parsed_response)
     get_students()
-    print(get_students())
+    # print(get_students())
 
 
 # get_students()
