@@ -4,7 +4,18 @@ This will will print the UUID of the past Black Box Trading Webinar
 
 import requests
 import json
+import pygsheets
+import pandas as pd
+from google.oauth2 import service_account
+from datetime import datetime
+import time
 from urllib.parse import urljoin, urlparse, urlsplit
+
+#   Get the current time when the code starts running
+start_time = datetime.now()
+#   Get the time elapsed - current time - start time
+
+print("Start/Current Local Time --> " + str(time.ctime()))
 
 #   ParseResult(
 #   scheme='https',
@@ -34,13 +45,27 @@ trading_bot_data = response.text.encode('utf8')
 parsed_response = json.loads(trading_bot_data)
 # print(parsed_response)
 
-
 # next_page_token = parsed_response["next_page_token"]
 # print(next_page_token)
 
+#   If modifying these scopes, delete the file token.pickle.
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly', 'https://www.googleapis.com/auth/drive',
+          'https://www.googleapis.com/auth/drive.file']
+
+
+with open('credentials.json') as source:
+    info = json.load(source)
+credentials = service_account.Credentials.from_service_account_info(info)
+#   authorize Python Sheets access to Google Sheets
+client = pygsheets.authorize(service_account_file='credentials.json')
 
 tbot_webinar_ids = ['88377897916', '83249183441']
 next_page_token = parsed_response["next_page_token"]
+
+
+def main():
+    get_tbot_students()
+    store_tbot_participants()
 
 # def get_urls():
 #     new_url = []
@@ -61,25 +86,25 @@ next_page_token = parsed_response["next_page_token"]
 #    and attaching it to both ids
 
 
-def get_urls():
-    new_url = []
-    # for tokens in next_page_token:
-    webinar_scheme_net = "https://api.zoom.us"
-    # for token in next_page_token:
-    if next_page_token:
-        for token in next_page_token:
-            print(next_page_token)
-            webinar_path = '/v2/webinars/83249183441/participants?page_size=300&next_page_token=' + str(token)
-            webinar_url_joined = urljoin(webinar_scheme_net, webinar_path)
-            new_url.append(webinar_url_joined)
-    print(new_url)
-    return new_url
-
-
-get_urls()
-
+# def get_urls():
+#     new_url = []
+#     # for tokens in next_page_token:
+#     webinar_scheme_net = "https://api.zoom.us"
+#     # for token in next_page_token:
+#     if next_page_token:
+#         for token in next_page_token:
+#             print(next_page_token)
+#             webinar_path = '/v2/webinars/83249183441/participants?page_size=300&next_page_token=' + str(token)
+#             webinar_url_joined = urljoin(webinar_scheme_net, webinar_path)
+#             new_url.append(webinar_url_joined)
+#         print(new_url)
+#     # return new_url
 #
-def get_trading_bot_students():
+#
+# get_urls()
+
+
+def get_tbot_students():
     participants = parsed_response["registrants"]
     # print(participants)
     student_email_name = []
@@ -103,8 +128,8 @@ def get_trading_bot_students():
             student_email_name.sort(key=lambda tup: tup[1])
             # print("if this prints, the if statement is not true (printing the else)" + str(student_email_name))
     return student_email_name
-#
-#
+
+
 # #   for each url created above, parse through the url then run the function to get the students
 # for urls in get_urls():
 #     response = requests.request("GET", urls, headers=headers, data=payload)
@@ -114,6 +139,50 @@ def get_trading_bot_students():
 #     # print(parsed_response)
 
 
-get_trading_bot_students()
+# get_tbot_students()
 
-# print(get_trading_bot_students())
+# print(get_tbot_students())
+
+
+def store_tbot_participants():
+    """
+    Function to store all Trading Bot webinar participants in Google Sheets
+    """
+    #   authorize Python Sheets access to Google Sheets
+    # client = pygsheets.authorize(service_account_file='credentials.json')
+    #   create a new spreadsheet in the given folder
+    tbot_participants_sheet = client.create(title="UA Trading Bot Participants",
+                                            folder="1cIjZbTLwNEDo4YdknD8bUu9VPx-Ky7I-")
+    tbot_wks = tbot_participants_sheet.add_worksheet("Participants")
+    # tbot_wks.insert_rows(0, values=["Participant Email Address", "Participant Name"])
+    tbot_df = pd.DataFrame(get_tbot_students(), columns=['Participant Email Address', 'Participant Name'])
+    tbot_wks.set_dataframe(tbot_df, start=(1, 1), copy_index=False, copy_head=True)
+
+    tbot_wks.cell("A1").set_text_format("bold", True)
+    tbot_wks.cell("B1").set_text_format("bold", True)
+#     # tbot_wks.cell("C1").set_text_format("bold", True)
+#     tbot_participants = get_trading_bot_students()
+#     for participant in tbot_participants:
+#         participant_email = participant[0].lower()
+#         participant_name = participant[1]
+#         # participant_last_name = participant[2]
+#         tbot_wks.insert_rows(1, values=[participant_email, participant_name])
+
+    #   TODO: figure out if I can just make the end the last field in column B.
+    #       if the above is not possible, get the last field through code (since this will change),
+    #       then insert variable it below
+    # tbot_wks.sort_range(start='A2', end='C110', basecolumnindex=1, sortorder='ASCENDING')
+    tbot_df.sort_values(by='Participant Email Address', ascending=True)
+    #   Share spreadsheet with read only access to anyone with the link
+    tbot_participants_sheet.share('', role='reader', type='anyone')
+    #   print the direct link to the spreadsheet for the user running the code to access
+    print("The UA Trading Bot Participants List can be found here: ", tbot_participants_sheet.url)
+    print("End/Current Local Time --> " + str(time.ctime()))
+    time_elapsed = datetime.now() - start_time
+    print("Trading Bot Participants Run Time --> " + str(time_elapsed))
+
+
+# store_tbot_participants()
+
+if __name__ == '__main__':
+    main()
