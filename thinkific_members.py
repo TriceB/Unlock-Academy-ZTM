@@ -41,8 +41,9 @@ headers = {
 params = (
     ('page', '1'),
     # as of 9/21 there are a total of 17962 users
+    # as of 11/7 there are a total of 18261 users
     ('limit', '20000')
-    # ('limit', '500')
+    # ('limit', '5000')
 )
 
 response = requests.get('https://api.thinkific.com/api/public/v1/users', headers=headers, params=params)
@@ -67,7 +68,7 @@ client = pygsheets.authorize(service_account_file='credentials.json')
 def main():
     # print(THINKIFIC_SUBDOMAIN)
     get_members()
-    # print(get_members())
+    print(get_members())
     store_thinkific_members()
 
 
@@ -94,8 +95,6 @@ def store_thinkific_members():
     """
     Function to store all Thinkific Members who are enrolled in UA in Google Sheets
     """
-    # authorize Python Sheets access to Google Sheets
-    # client = pygsheets.authorize(service_account_file='credentials.json')
 
     #   create a new spread sheet in the given folder
     thinkific_members_sheet = client.create(title="UA Thinkific Members", folder="1cIjZbTLwNEDo4YdknD8bUu9VPx-Ky7I-")
@@ -104,27 +103,13 @@ def store_thinkific_members():
     #   create headers in the worksheet (A1 and B1)
     # thinkific_wks.insert_rows(0, values=["Member Email Address", "Member Name"])
     thinkific_df = pd.DataFrame(get_members(), columns=["Member Email Address", "Member Name"])
-    thinkific_wks.set_dataframe(thinkific_df, start=(1, 1), copy_index=False, copy_head=True)
+    thinkific_wks.set_dataframe(thinkific_df, start=(1, 1), copy_index=False, copy_head=True, extend=True)
     # thinkific_object = thinkific_df.select_dtypes(['object'])
     # thinkific_df[thinkific_object.columns] = thinkific_object.apply(lambda x: x.str.strip())
-    thinkific_df["Member Name"] = thinkific_df["Member Name"].str.strip()
+    thinkific_df['Member Name'] = thinkific_df['Member Name'].str.strip()
     #   format the headers in bold
     thinkific_wks.cell("A1").set_text_format("bold", True)
     thinkific_wks.cell("B1").set_text_format("bold", True)
-#     #   run the get_members function from the thinkific_members.py file and store them in the ua_members variable
-#     ua_members = get_members()
-#     #   loop through all of the members and get the email address (index 0) and the name (index 1)
-#     for member in ua_members:
-#         member_email = member[0]
-#         member_name = member[1]
-#         #   insert a new row for each member starting on row 1. Column A = email addresses, Column B = Name
-#         thinkific_wks.insert_rows(1, values=[member_email, member_name])
-#     #   TODO: figure out if I can just make the end of the sort the last field in column B.
-#     #       if the above is not possible, get the last field through code (since this will change),
-#     #       then insert variable it below
-#     #   Sort the spreadsheet by the members names
-#         if member[1] is 'unlock student':
-#     thinkific_wks.sort_range(start='A2', end='B20000', basecolumnindex=1, sortorder='ASCENDING')
     thinkific_df.sort_values(by=['Member Name', 'Member Email Address'])
     #   Share spreadsheet with read only access to anyone with the link
     thinkific_members_sheet.share('', role='reader', type='anyone')
