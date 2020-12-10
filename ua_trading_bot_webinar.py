@@ -21,16 +21,10 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(name)s:%(message)s')
 
-file_handler = logging.FileHandler('tbot_results5.log')
+file_handler = logging.FileHandler('manual_email_check.log')
 file_handler.setFormatter(formatter)
 
 logger.addHandler(file_handler)
-
-#   Get the current time when the code starts running
-start_time = datetime.now()
-#   Get the time elapsed - current time - start time
-
-print("Start/Current Local Time --> " + str(time.ctime()))
 
 #   ParseResult(
 #   scheme='https',
@@ -62,8 +56,8 @@ def connect_to_zoom(next_page_token=None):
 
     jwt_encoded = str(jwt.encode(payload, api_sec), 'utf-8')
 
-    # print("TOKEN")
-    # print(jwt_encoded)
+    print("TOKEN")
+    print(jwt_encoded)
     conn = http.client.HTTPSConnection("api.zoom.us")
     return conn, jwt_encoded
 
@@ -92,17 +86,28 @@ tbot_webinar_ids = ['83249183441', '81408245169', '85347739061']    # '883778979
 
 
 def main():
-    for tbot_id in tbot_webinar_ids:
-        get_web_reg(tbot_id)
-
-    connect_to_zoom()
-    # get_tbot_students()
-    logger.info(pformat(get_tbot_students()))
-
     # just in case a sheet needs to be deleted
     # sh = client.open(title="UA Trading Bot Participants")
     # sh.delete()
+    #   Get the current time when the code starts running
+
+    start_time = datetime.now()
+    print("Start/Current Local Time --> " + str(time.ctime()))
+    #   Get the time elapsed - current time - start time
+    time_elapsed = datetime.now() - start_time
+
+    for tbot_id in tbot_webinar_ids:
+        get_web_reg(tbot_id)
+    connect_to_zoom()
+
+    get_tbot_students()
+    print("Trading Bot Participants Run Time --> " + str(time_elapsed))
+    # logger.info(pformat(get_tbot_students()))
+
     store_tbot_participants()
+    print("Store Trading Bot Participants Run Time --> " + str(time_elapsed))
+
+    print("End/Current Local Time --> " + str(time.ctime()))
 
 
 registrants = []
@@ -129,7 +134,7 @@ def get_web_reg(web_id=None, token_arg=None):
     if parsed_response['registrants']:
         registrants.append(parsed_response['registrants'])
     token = parsed_response["next_page_token"]
-    # print("some registrants ", registrants)
+    # logger.info(("some registrants ", registrants))
     # print("print token", token)
     if token:
         get_web_reg(web_id, token)
@@ -142,8 +147,9 @@ def get_tbot_students():
     thinkific_member_emails = []
     for thinkific_email in thinkific_members:
         # print(thinkific_email[0])
-        thinkific_member_emails.append(thinkific_email[0])
-
+        thinkific_member_emails.append(thinkific_email[0].lower())
+    logger.info("Thinkific emails")
+    logger.info(pformat(thinkific_member_emails))
     participants = registrants  # list structure - [  [{  }],  [{  }],  [{  }],  [{  }],  [{  }],  [{  }]  ]
     # pprint(participants)
     student_email_name = []
@@ -151,7 +157,8 @@ def get_tbot_students():
         for student in participant:
 
             student_email = student["email"].lower()
-
+            logger.info("Zoom TBot emails")
+            logger.info(pformat(student_email))
             # Thinkific API requests are limited at 120 requests per minute.
             # run the code to check in the thinkific members but sleep for 1 minute between every 120 users
             # n = 120  # iterate over every 120th element
@@ -167,7 +174,8 @@ def get_tbot_students():
             # create a new list storing only the email addresses to check for existence later
             student_listing = []
             for person in student_email_name:
-                student_listing.append(person['email'])
+                student_listing.append(person['email'].lower())
+
             # check if email address is the thinkific members list (this means they are already a registered UA Student)
             if student_email not in thinkific_member_emails:
                 # check for if email address already exists in new list
@@ -176,10 +184,12 @@ def get_tbot_students():
                     if "last_name" in student:
                         student_info = {"email": student_email, "first_name": student["first_name"], "last_name": student["last_name"]}
                         student_email_name.append(student_info)
-                    # if the user did not enter a last name when registering, only include the email and first name
+                    # else if the user did not enter a last name when registering, only include the email and first name
                     else:
                         student_info = {"email": student_email, "first_name": student["first_name"]}
                         student_email_name.append(student_info)
+
+                    # sleep for 60 secs to not reach request limit
                     # time.sleep(60)
 
     # student_email_name.sort(key=lambda tup: tup[1])
@@ -204,9 +214,7 @@ def get_tbot_students():
     #     # sort each member by the name
     #     student_email_name.sort(key=lambda tup: tup[1])
     #     # print("if this prints, the if statement is not true (printing the else)" + str(student_email_name))
-    print("End/Current Local Time --> " + str(time.ctime()))
-    time_elapsed = datetime.now() - start_time
-    print("Trading Bot Participants Run Time --> " + str(time_elapsed))
+
     return student_email_name
 
 
@@ -230,7 +238,7 @@ def store_tbot_participants():
     # start entering the data in the sheet at row 1, column 1
     tbot_wks.set_dataframe(tbot_df, start=(1, 1), copy_index=False, copy_head=True)
     # change NaN values to blanks - for registrants who did not enter a last name
-    tbot_wks.replace("NaN", replacement="")
+    tbot_wks.replace("NaN", replacement="",matchEntireCell=True)
     # bold text format for headers
     tbot_wks.cell("A1").set_text_format("bold", True)
     tbot_wks.cell("B1").set_text_format("bold", True)
@@ -242,12 +250,7 @@ def store_tbot_participants():
     tbot_participants_sheet.share('', role='reader', type='anyone')
     #   print the direct link to the spreadsheet for the user running the code to access
     print("The UA Trading Bot Participants List can be found here: ", tbot_participants_sheet.url)
-    print("End/Current Local Time --> " + str(time.ctime()))
-    time_elapsed = datetime.now() - start_time
-    print("Store Trading Bot Participants Run Time --> " + str(time_elapsed))
 
-
-# store_tbot_participants()
 
 if __name__ == '__main__':
     main()

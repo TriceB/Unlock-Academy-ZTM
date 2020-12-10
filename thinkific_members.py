@@ -19,7 +19,7 @@ import pandas as pd
 import json
 from google.oauth2 import service_account
 import os
-from datetime import datetime
+from datetime import datetime, date
 import time
 
 #   Get the current time when the code starts running
@@ -66,9 +66,8 @@ client = pygsheets.authorize(service_account_file='credentials.json')
 
 
 def main():
-    # print(THINKIFIC_SUBDOMAIN)
     get_members()
-    print(get_members())
+    # print(get_members())
     store_thinkific_members()
 
 
@@ -95,9 +94,9 @@ def store_thinkific_members():
     """
     Function to store all Thinkific Members who are enrolled in UA in Google Sheets
     """
-
+    today = date.today()
     #   create a new spread sheet in the given folder
-    thinkific_members_sheet = client.create(title="UA Thinkific Members", folder="1cIjZbTLwNEDo4YdknD8bUu9VPx-Ky7I-")
+    thinkific_members_sheet = client.create(title="UA Thinkific Members " + str(today), folder="1cIjZbTLwNEDo4YdknD8bUu9VPx-Ky7I-")
     #   add a new worksheet to the spreadsheet
     thinkific_wks = thinkific_members_sheet.add_worksheet("Members")
     #   create headers in the worksheet (A1 and B1)
