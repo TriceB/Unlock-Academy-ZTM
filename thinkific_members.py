@@ -22,11 +22,6 @@ import os
 from datetime import datetime, date
 import time
 
-#   Get the current time when the code starts running
-start_time = datetime.now()
-#   Get the time elapsed - current time - start time
-
-print("Start/Current Local Time --> " + str(time.ctime()))
 
 # THINKIFIC_API_KEY = os.environ.get('THINKIFIC_API_KEY')
 # THINKIFIC_SUBDOMAIN = os.environ.get('THINKIFIC_SUBDOMAIN')
@@ -66,9 +61,20 @@ client = pygsheets.authorize(service_account_file='credentials.json')
 
 
 def main():
+    #   Get the current time when the code starts running
+    start_time = datetime.now()
+    #   Get the time elapsed - current time - start time
+
+    print("Start/Current Local Time --> " + str(time.ctime()))
+
+    time_elapsed = datetime.now() - start_time
+
     get_members()
     # print(get_members())
+    print("Store Thinkific Member Start Time --> " + str(time.ctime()))
     store_thinkific_members()
+    print("Store Thinkific Members Run Time --> " + str(time_elapsed))
+    print("End/Current Local Time --> " + str(time.ctime()))
 
 
 def get_members():
@@ -78,11 +84,11 @@ def get_members():
     members = members_parsed["items"]
     members_email_name = []
     for member in members:
-        member = member["email"], member["full_name"]
+        member = {"email": member["email"], "first_name": member["first_name"], "last_name": member["last_name"]}
         members_email_name.append(member)
         # this will result in a list of tuples [(email, name), (email, name)]
         # sort by email addresses of tuple which is the 1st element of each tuple
-        members_email_name.sort(key=lambda tup: tup[1])
+    members_email_name = sorted(members_email_name, key=lambda i: i['first_name'])
     return members_email_name
 
 
@@ -101,22 +107,22 @@ def store_thinkific_members():
     thinkific_wks = thinkific_members_sheet.add_worksheet("Members")
     #   create headers in the worksheet (A1 and B1)
     # thinkific_wks.insert_rows(0, values=["Member Email Address", "Member Name"])
-    thinkific_df = pd.DataFrame(get_members(), columns=["Member Email Address", "Member Name"])
+    thinkific_df = pd.DataFrame(get_members())  # , columns=["Member Email Address", "Member First Name", "Member Last Name"]
     thinkific_wks.set_dataframe(thinkific_df, start=(1, 1), copy_index=False, copy_head=True, extend=True)
     # thinkific_object = thinkific_df.select_dtypes(['object'])
     # thinkific_df[thinkific_object.columns] = thinkific_object.apply(lambda x: x.str.strip())
-    thinkific_df['Member Name'] = thinkific_df['Member Name'].str.strip()
+    thinkific_df['first_name'] = thinkific_df['first_name'].str.strip()
     #   format the headers in bold
+    thinkific_wks.replace("NaN", replacement="", matchEntireCell=True)
     thinkific_wks.cell("A1").set_text_format("bold", True)
     thinkific_wks.cell("B1").set_text_format("bold", True)
-    thinkific_df.sort_values(by=['Member Name', 'Member Email Address'])
+    thinkific_wks.cell("C1").set_text_format("bold", True)
+    thinkific_df.sort_values(by='first_name', ascending=True)
+    thinkific_df.sort_values(by='last_name', ascending=True)
     #   Share spreadsheet with read only access to anyone with the link
     thinkific_members_sheet.share('', role='reader', type='anyone')
     #   print the direct link to the spreadsheet for the user running the code to access
     print("The UA Thinkific Members List can be found here: ", thinkific_members_sheet.url)
-    print("End/Current Local Time --> " + str(time.ctime()))
-    time_elapsed = datetime.now() - start_time
-    print("Thinkific Members Run Time --> " + str(time_elapsed))
 
 
 """
