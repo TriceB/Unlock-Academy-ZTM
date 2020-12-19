@@ -56,8 +56,8 @@ def connect_to_zoom(next_page_token=None):
 
     jwt_encoded = str(jwt.encode(payload, api_sec), 'utf-8')
 
-    print("TOKEN")
-    print(jwt_encoded)
+    # print("TOKEN")
+    # print(jwt_encoded)
     conn = http.client.HTTPSConnection("api.zoom.us")
     return conn, jwt_encoded
 
@@ -94,15 +94,15 @@ def main():
     start_time = datetime.now()
     print("Start/Current Local Time --> " + str(time.ctime()))
     #   Get the time elapsed - current time - start time
-    time_elapsed = datetime.now() - start_time
 
     for tbot_id in tbot_webinar_ids:
         get_web_reg(tbot_id)
     connect_to_zoom()
 
     get_tbot_students()
-    print("Trading Bot Participants Run Time --> " + str(time_elapsed))
+    time_elapsed = datetime.now() - start_time
     # logger.info(pformat(get_tbot_students()))
+    print("Trading Bot Participants Run Time --> " + str(time_elapsed))
 
     store_tbot_participants()
     print("Store Trading Bot Participants Run Time --> " + str(time_elapsed))
@@ -148,8 +148,8 @@ def get_tbot_students():
     for thinkific_email in thinkific_members:
         # print(thinkific_email[0])
         thinkific_member_emails.append(thinkific_email[0].lower())
-    logger.info("Thinkific emails")
-    logger.info(pformat(thinkific_member_emails))
+    # logger.info("Thinkific emails")
+    # logger.info(pformat(thinkific_member_emails))
     participants = registrants  # list structure - [  [{  }],  [{  }],  [{  }],  [{  }],  [{  }],  [{  }]  ]
     # pprint(participants)
     student_email_name = []
@@ -157,8 +157,8 @@ def get_tbot_students():
         for student in participant:
 
             student_email = student["email"].lower()
-            logger.info("Zoom TBot emails")
-            logger.info(pformat(student_email))
+            # logger.info("Zoom TBot emails")
+            # logger.info(pformat(student_email))
             # Thinkific API requests are limited at 120 requests per minute.
             # run the code to check in the thinkific members but sleep for 1 minute between every 120 users
             # n = 120  # iterate over every 120th element
@@ -193,7 +193,7 @@ def get_tbot_students():
                     # time.sleep(60)
 
     # student_email_name.sort(key=lambda tup: tup[1])
-    student_email_name = sorted(student_email_name, key=lambda i: i['email'])
+    student_email_name = sorted(student_email_name, key=lambda i: i['first_name'])
 
     # PREVIOUS CODE - used to before adding the code above to check in the thinkific members at the same time
     # if "last_name" in student:
@@ -238,7 +238,7 @@ def store_tbot_participants():
     # start entering the data in the sheet at row 1, column 1
     tbot_wks.set_dataframe(tbot_df, start=(1, 1), copy_index=False, copy_head=True)
     # change NaN values to blanks - for registrants who did not enter a last name
-    tbot_wks.replace("NaN", replacement="",matchEntireCell=True)
+    tbot_wks.replace("NaN", replacement="", matchEntireCell=True)
     # bold text format for headers
     tbot_wks.cell("A1").set_text_format("bold", True)
     tbot_wks.cell("B1").set_text_format("bold", True)
