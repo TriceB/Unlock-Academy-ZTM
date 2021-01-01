@@ -20,6 +20,9 @@ import jwt
 import http.client
 import logging
 import requests
+import pygsheets
+import pandas as pd
+from google.oauth2 import service_account
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -30,19 +33,40 @@ file_handler.setFormatter(formatter)
 
 logger.addHandler(file_handler)
 
+#   Scopes required for Google sheets. If modifying these scopes, delete the file token.pickle.
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly', 'https://www.googleapis.com/auth/drive',
+          'https://www.googleapis.com/auth/drive.file']
+
+
+with open('credentials.json') as source:
+    info = json.load(source)
+credentials = service_account.Credentials.from_service_account_info(info)
+#   authorize Python Sheets access to Google Sheets
+client = pygsheets.authorize(service_account_file='credentials.json')
+
 
 def main():
     connect_to_zoom()
-    get_all_zoom_users()
+    # get_all_zoom_users()
     get_all_zoom_meetings()
-    get_all_zoom_webinars()
-    get_ids()
-    for webinar_id in webinar_ids:
-        get_web_reg(webinar_id)
-        
-    for meeting_id in meeting_ids:
+    # get_all_zoom_webinars()
+    # get_ids()
+    # for webinar_id in webinar_ids:
+    #     get_web_reg(webinar_id)
+    # print(list_of_meetings)
+    meetings_with_registrants = []
+    for meeting in list_of_meetings:
+        # print(meeting)
+        meeting_type = meeting["meeting_type"]
+        if meeting_type == 8:
+            meetings_with_registrants.append(meeting["meeting_id"])
+    # print(meetings_with_registrants)
+    for meeting_id in meetings_with_registrants:
         get_meeting_reg(meeting_id)
+    print(meetings_with_registrants)
 
+    # store_webinar_registrants()
+    
 
 def connect_to_zoom(next_page_token=None):
     # Using PyJWT to create tokens
@@ -98,7 +122,8 @@ def get_all_zoom_users():
         user = {"first_name": users["first_name"], "last_name": users["last_name"], "user_dept": users["dept"],
                 "user_id": users["id"]}
         ua_user.append(user)
-    # print(ua_user)
+    # print("the users in the get users function")
+    # pprint(ua_user)
     
     return ua_user
 
@@ -125,12 +150,14 @@ def get_all_zoom_meetings(token_arg=None):
     """
     connect = http.client.HTTPSConnection("api.zoom.us")
     users = get_all_zoom_users()
-    user_ids = []
-    
+    # user_ids = []
+    # print(users)
     # list_of_meetings = []
     for user_id in users:
         the_id = user_id["user_id"]
-        user_ids.append(the_id)
+        # print("The IDS")
+        # print(the_id)
+        # user_ids.append(the_id)
         base_url = "/v2/users/" + the_id + "/meetings"
         # if there is a token, add it to the url string
         if token_arg:
@@ -141,7 +168,7 @@ def get_all_zoom_meetings(token_arg=None):
         data = res.read()
         # pprint(data.decode("utf-8"))
         parsed_data = json.loads(data)
-        token = parsed_data["next_page_token"]
+        
         # pprint(parsed_data)
         meetings = parsed_data["meetings"]
         # loop through each meeting
@@ -151,15 +178,19 @@ def get_all_zoom_meetings(token_arg=None):
             # check if the meeting is type 2 or type 8
             if meeting_type == 2 or meeting_type == 8:
                 # if meeting matches criteria, create a new dict with topic, id, uuid, host id, and meeting type
-                meeting_info = {"meeting_topic": meeting["topic"], "meeting_id": meeting["id"],
-                                "meeting_uuid": meeting["uuid"], "host_id": meeting["host_id"],
+                meeting_info = {"meeting_topic": meeting["topic"],
+                                "meeting_id": meeting["id"],
+                                "meeting_uuid": meeting["uuid"],
+                                "host_id": meeting["host_id"],
                                 "meeting_type": meeting["type"]}
                 # append each meeting info to empty list
                 list_of_meetings.append(meeting_info)
+                
+        token = parsed_data["next_page_token"]
         if token:
             get_all_zoom_meetings(token)
-    print("The Meetings")
-    pprint(list_of_meetings)
+    # print("The Meetings")
+    # pprint(list_of_meetings)
     # list_of_users = parsed_data["users"]
     # print("the users", list_of_users)
     
@@ -187,7 +218,7 @@ def get_all_zoom_webinars(token_arg=None):
     """
     connect = http.client.HTTPSConnection("api.zoom.us")
     users = get_all_zoom_users()
-    user_ids = []
+    # user_ids = []
     
     # list_of_webinars = []
     for user_id in users:
@@ -199,7 +230,7 @@ def get_all_zoom_webinars(token_arg=None):
             # if the user is in the EdTech department, pull their user id
             the_id = user_id["user_id"]
             # append the user id to the empty list
-            user_ids.append(the_id)
+            # user_ids.append(the_id)
             # concatenate the user id in the url string to only pull webinars that
             # users in the EdTech department have hosted
             base_url = "/v2/users/" + the_id + "/webinars"
@@ -257,6 +288,10 @@ def get_ids():
 
 
 def get_web_reg(web_id=None, token_arg=None):
+    """
+        Function to loop through all webinar IDs and return a list dicts with
+        email, first_name, last_name, webinar_topic, webinar_id
+        """
     registrants = []
     
     base_url = "https://api.zoom.us/v2/webinars/"
@@ -277,15 +312,15 @@ def get_web_reg(web_id=None, token_arg=None):
     # print("parsed response ", parsed_response)
     # Pull out all of the registrants
     if parsed_response['registrants']:
-        for registrant in parsed_response['registrants']:
-            for webinar in list_of_webinars:
+        for webinar in list_of_webinars:
+            for registrant in parsed_response['registrants']:
                 # print(registrant)
                 if "last_name" in registrant:
                     webinar_registrant_info = {"email": registrant["email"],
-                                                "first_name": registrant["first_name"],
-                                                "last_name": registrant["last_name"],
-                                                "webinar_topic": webinar["webinar_topic"],
-                                                "webinar_id": webinar["webinar_id"]}
+                                               "first_name": registrant["first_name"],
+                                               "last_name": registrant["last_name"],
+                                               "webinar_topic": webinar["webinar_topic"],
+                                               "webinar_id": webinar["webinar_id"]}
                     registrants.append(webinar_registrant_info)
                 else:
                     webinar_registrant_info = {"email": registrant["email"],
@@ -294,9 +329,9 @@ def get_web_reg(web_id=None, token_arg=None):
                                                "webinar_id": webinar["webinar_id"]
                                                }
                     registrants.append(webinar_registrant_info)
+        # print(10 * "*" + " SOME WEBINAR REGISTRANTS " + 10 * "*" + " --> ")
+        # pprint(registrants)
     token = parsed_response["next_page_token"]
-    print(" ********SOME WEBINAR REGISTRANTS******** --> ")
-    pprint(registrants)
     # print("print token", token)
     if token:
         get_web_reg(web_id, token)
@@ -304,6 +339,10 @@ def get_web_reg(web_id=None, token_arg=None):
 
 
 def get_meeting_reg(meet_id=None, token_arg=None):
+    """
+    Function to loop through all meeting IDs and return a list dicts with
+    email, first_name, last_name, meeting_topic, meeting_id
+    """
     registrants = []
     # "/v2/meetings/81483069736/registrants?next_page_token=iWbzXWx6sPv2Zb5n6DdhKZvmFeArfLrodb2&page_size=30&status=approved"
     base_url = "https://api.zoom.us/v2/meetings/"
@@ -315,7 +354,6 @@ def get_meeting_reg(meet_id=None, token_arg=None):
         the_built_url += '&next_page_token=' + str(token_arg)
     
     # Get the first page
-    # print("web_id?", web_id)
     # print("token_arg?", token_arg)
     # print("built_url?", the_built_url)
     response = requests.request("GET", the_built_url, headers=headers)  # , payload=payload
@@ -325,29 +363,66 @@ def get_meeting_reg(meet_id=None, token_arg=None):
     # Pull out all of the registrants
     if parsed_response['registrants']:
         for registrant in parsed_response['registrants']:
-            for meeting in list_of_meetings:
-                # print(registrant)
-                if "last_name" in registrant:
-                    meeting_registrant_info = {"email": registrant["email"],
-                                               "first_name": registrant["first_name"],
-                                               "last_name": registrant["last_name"],
-                                               "meeting_topic": meeting["meeting_topic"],
-                                               "meeting_id": meeting["meeting_id"]}
-                    registrants.append(meeting_registrant_info)
-                else:
-                    meeting_registrant_info = {"email": registrant["email"],
-                                               "first_name": registrant["first_name"],
-                                               "meeting_topic": meeting["meeting_topic"],
-                                               "meeting_id": meeting["meeting_id"]}
-                    registrants.append(meeting_registrant_info)
+            # TODO: some meetings don't have registrants. check for participants instead
+            
+            if "last_name" in registrant:
+                meeting_registrant_info = {"email": registrant["email"],
+                                           "first_name": registrant["first_name"],
+                                           "last_name": registrant["last_name"],
+                                           # "meeting_topic": meeting["meeting_topic"],
+                                           "meeting_id": meet_id}
+                registrants.append(meeting_registrant_info)
+            else:
+                meeting_registrant_info = {"email": registrant["email"],
+                                           "first_name": registrant["first_name"],
+                                           # "meeting_topic": meeting["meeting_topic"],
+                                           "meeting_id": meet_id}
+                registrants.append(meeting_registrant_info)
+    
+        # pprint(registrants)
     token = parsed_response["next_page_token"]
-    print("*************SOME MEETING REGISTRANTS************* --> ")
-    pprint(registrants)
+    
     # print("print token", token)
     if token:
         get_meeting_reg(meet_id, token)
     return registrants
 
 
+def store_webinar_registrants():
+    """
+    Function to store all Webinar registrants in Google Sheets
+    """
+    #   authorize Python Sheets access to Google Sheets
+    # client = pygsheets.authorize(service_account_file='credentials.json')
+    #   create a new spreadsheet in the given folder
+    today = date.today()
+    webinar_registrants_sheet = client.create(title="UA Webinar Registrants " + str(today),
+                                              folder="1cIjZbTLwNEDo4YdknD8bUu9VPx-Ky7I-")
+    # create a new worksheet in the spreadsheet named "Participants"
+    webinar_registrants_wks = webinar_registrants_sheet.add_worksheet("Registrants")
+
+    webinar_registrants = get_web_reg()
+    # turn the students info into a dataframe to load into Google Sheets
+    webinar_registrants_df = pd.DataFrame(webinar_registrants)     # , columns=['Participant Email Address', 'Participant First Name', 'Participant Last Name']
+
+    # start entering the data in the sheet at row 1, column 1
+    webinar_registrants_wks.set_dataframe(webinar_registrants_df, start=(1, 1), copy_index=False, copy_head=True)
+    # change NaN values to blanks - for registrants who did not enter a last name
+    webinar_registrants_wks.replace("NaN", replacement="", matchEntireCell=True)
+    # bold text format for headers
+    webinar_registrants_wks.cell("A1").set_text_format("bold", True)
+    webinar_registrants_wks.cell("B1").set_text_format("bold", True)
+    webinar_registrants_wks.cell("C1").set_text_format("bold", True)
+    webinar_registrants_wks.cell("D1").set_text_format("bold", True)
+    webinar_registrants_wks.cell("E1").set_text_format("bold", True)
+    # sort sheet by email addresses
+    webinar_registrants_df.sort_values(by='email', ascending=True)
+
+    #   Share spreadsheet with read only access to anyone with the link
+    webinar_registrants_sheet.share('', role='reader', type='anyone')
+    #   print the direct link to the spreadsheet for the user running the code to access
+    print("The UA Webinar Registrants List can be found here: ", webinar_registrants_sheet.url)
+    
+    
 if __name__ == '__main__':
     main()
