@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(name)s:%(message)s')
 
-file_handler = logging.FileHandler('meetings_webinars_check1.log')
+file_handler = logging.FileHandler('webinars_check2.log')
 file_handler.setFormatter(formatter)
 
 logger.addHandler(file_handler)
@@ -48,22 +48,28 @@ client = pygsheets.authorize(service_account_file='credentials.json')
 def main():
     connect_to_zoom()
     # get_all_zoom_users()
-    get_all_zoom_meetings()
-    # get_all_zoom_webinars()
+    # get_all_zoom_meetings()
+    get_all_zoom_webinars()
     # get_ids()
-    # for webinar_id in webinar_ids:
-    #     get_web_reg(webinar_id)
+    
+    web_ids = []
+    for webinar in list_of_webinars:
+        w_id = webinar["webinar_id"]
+        web_ids.append(w_id)
+    for webinar_id in web_ids:
+        get_web_reg(webinar_id)
+        
     # print(list_of_meetings)
-    meetings_with_registrants = []
-    for meeting in list_of_meetings:
-        # print(meeting)
-        meeting_type = meeting["meeting_type"]
-        if meeting_type == 8:
-            meetings_with_registrants.append(meeting["meeting_id"])
+    # meetings_with_registrants = []
+    # for meeting in list_of_meetings:
+    #     # print(meeting)
+    #     meeting_type = meeting["meeting_type"]
+    #     if meeting_type == 8:
+    #         meetings_with_registrants.append(meeting["meeting_id"])
+    # # print(meetings_with_registrants)
+    # for meeting_id in meetings_with_registrants:
+    #     get_meeting_reg(meeting_id)
     # print(meetings_with_registrants)
-    for meeting_id in meetings_with_registrants:
-        get_meeting_reg(meeting_id)
-    print(meetings_with_registrants)
 
     # store_webinar_registrants()
     
@@ -189,8 +195,8 @@ def get_all_zoom_meetings(token_arg=None):
         token = parsed_data["next_page_token"]
         if token:
             get_all_zoom_meetings(token)
-    # print("The Meetings")
-    # pprint(list_of_meetings)
+    print("The Meetings")
+    pprint(list_of_meetings)
     # list_of_users = parsed_data["users"]
     # print("the users", list_of_users)
     
@@ -260,7 +266,7 @@ def get_all_zoom_webinars(token_arg=None):
             if token:
                 get_all_zoom_meetings(token)
     print("The Webinars")
-    pprint(list_of_webinars)
+    logger.info(pformat(list_of_webinars))
     # list_of_users = parsed_data["users"]
     # print("the users", list_of_users)
     
@@ -312,25 +318,27 @@ def get_web_reg(web_id=None, token_arg=None):
     # print("parsed response ", parsed_response)
     # Pull out all of the registrants
     if parsed_response['registrants']:
-        for webinar in list_of_webinars:
-            for registrant in parsed_response['registrants']:
-                # print(registrant)
-                if "last_name" in registrant:
-                    webinar_registrant_info = {"email": registrant["email"],
-                                               "first_name": registrant["first_name"],
-                                               "last_name": registrant["last_name"],
-                                               "webinar_topic": webinar["webinar_topic"],
-                                               "webinar_id": webinar["webinar_id"]}
-                    registrants.append(webinar_registrant_info)
-                else:
-                    webinar_registrant_info = {"email": registrant["email"],
-                                               "first_name": registrant["first_name"],
-                                               "webinar_topic": webinar["webinar_topic"],
-                                               "webinar_id": webinar["webinar_id"]
-                                               }
-                    registrants.append(webinar_registrant_info)
+        # for webinar in list_of_webinars:
+        for registrant in parsed_response['registrants']:
+            # print(registrant)
+            if "last_name" in registrant:
+                webinar_registrant_info = {"email": registrant["email"],
+                                           "first_name": registrant["first_name"],
+                                           "last_name": registrant["last_name"],
+                                           # "webinar_topic": webinar["webinar_topic"],
+                                           "webinar_id": web_id
+                                           }
+                registrants.append(webinar_registrant_info)
+            else:
+                webinar_registrant_info = {"email": registrant["email"],
+                                           "first_name": registrant["first_name"],
+                                           # "webinar_topic": webinar["webinar_topic"],
+                                           "webinar_id": web_id
+                                           }
+                registrants.append(webinar_registrant_info)
         # print(10 * "*" + " SOME WEBINAR REGISTRANTS " + 10 * "*" + " --> ")
-        # pprint(registrants)
+        logger.info(pformat(registrants))
+    #     568541974, 674016059, 386270599 webinar IDs do not have any registrants
     token = parsed_response["next_page_token"]
     # print("print token", token)
     if token:
