@@ -482,8 +482,8 @@ def get_meeting_participants(meet_id=None, meet_topic=None, token_arg=None):
                 #  (5 times - 1 listing for meeting 101, 202 and 303 + 2 extra times they joined meeting 303)
                 #  [{"name": student 1, "meeting": 101}, {"name": student 1, "meeting": 202},
                 #   {"name": student 1, "meeting": 303}, {"name": student 1, "meeting": 303}, {"name": student 1, "meeting": 303}]
-                # if participant_email not in participant["user_email"]:
-                if len(participant_name_split) > 1:
+                if participant_email not in participant["user_email"]:
+                # if len(participant_name_split) > 1:
                     first_name = participant_name_split[0]
                     last_name = participant_name_split[1]
                     meeting_participant_info = {"email": participant_email,
