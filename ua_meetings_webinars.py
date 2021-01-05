@@ -52,37 +52,52 @@ def main():
     get_all_zoom_webinars()
     # get_ids()
     
-    list_of_webinar_ids = []
-    for webinar in list_of_webinars:
-        web_id = webinar["webinar_id"]
-        web_topic = webinar["webinar_topic"]
-        webinar_id_topic = {"webinar_id": web_id,
-                            "webinar_topic": web_topic}
-        list_of_webinar_ids.append(webinar_id_topic)
-    for webinar in list_of_webinar_ids:
-        get_web_reg(webinar["webinar_id"], webinar["webinar_topic"])
-        
-    # pprint(list_of_webinar_ids)
-    
-    # print(list_of_meetings)
-    meetings_with_registrants = []
+    # list_of_webinar_ids = []
+    # for webinar in list_of_webinars:
+    #     web_id = webinar["webinar_id"]
+    #     web_topic = webinar["webinar_topic"]
+    #     webinar_id_topic = {"webinar_id": web_id,
+    #                         "webinar_topic": web_topic}
+    #     list_of_webinar_ids.append(webinar_id_topic)
+    # for webinar in list_of_webinar_ids:
+    #     get_web_reg(webinar["webinar_id"], webinar["webinar_topic"])
+    #
+    # # pprint(list_of_webinar_ids)
+    #
+    # # print(list_of_meetings)
+    # meetings_with_registrants = []
+    # for meeting in list_of_meetings:
+    #     # print(meeting)
+    #     meeting_type = meeting["meeting_type"]
+    #     if meeting_type == 8:
+    #         meeting_id = meeting["meeting_id"]
+    #         meeting_topic = meeting["meeting_topic"]
+    #         meeting_id_topic = {"meeting_id": meeting_id,
+    #                             "meeting_topic": meeting_topic
+    #                             }
+    #         meetings_with_registrants.append(meeting_id_topic)
+    # # pprint(meetings_with_registrants)
+    # for meeting in meetings_with_registrants:
+    #     get_meeting_reg(meeting["meeting_id"], meeting["meeting_topic"])
+    # # print(meetings_with_registrants)
+
+    meetings_with_participants = []
     for meeting in list_of_meetings:
         # print(meeting)
         meeting_type = meeting["meeting_type"]
-        if meeting_type == 8:
+        if meeting_type == 2:
             meeting_id = meeting["meeting_id"]
             meeting_topic = meeting["meeting_topic"]
             meeting_id_topic = {"meeting_id": meeting_id,
                                 "meeting_topic": meeting_topic
                                 }
-            meetings_with_registrants.append(meeting_id_topic)
-    # pprint(meetings_with_registrants)
-    for meeting in meetings_with_registrants:
-        get_meeting_reg(meeting["meeting_id"], meeting["meeting_topic"])
-    # print(meetings_with_registrants)
+            meetings_with_participants.append(meeting_id_topic)
+    pprint(meetings_with_participants)
+    for meeting in meetings_with_participants:
+        get_meeting_participants(meeting["meeting_id"], meeting["meeting_topic"])
 
-    store_webinar_registrants()
-    store_meeting_registrants()
+    # store_webinar_registrants()
+    # store_meeting_registrants()
     # print(list_of_meetings)
     # print(get_meeting_reg())
     
@@ -290,20 +305,20 @@ meeting_ids = []
 webinar_ids = []
 
 
-def get_ids():
-    
-    ua_meetings = get_all_zoom_meetings()
-    for meeting in ua_meetings:
-        # meeting_id_topic = {"meeting_id": meeting["meeting_id"], "meeting_topic": meeting["meeting_topic"]}
-        meeting_id = meeting["meeting_id"]
-        meeting_ids.append(meeting_id)
-    
-    ua_webinars = get_all_zoom_webinars()
-    for webinar in ua_webinars:
-        webinar_id = webinar["webinar_id"]
-        webinar_ids.append(webinar_id)
-    
-    return meeting_ids, webinar_ids
+# def get_ids():
+#
+#     ua_meetings = get_all_zoom_meetings()
+#     for meeting in ua_meetings:
+#         # meeting_id_topic = {"meeting_id": meeting["meeting_id"], "meeting_topic": meeting["meeting_topic"]}
+#         meeting_id = meeting["meeting_id"]
+#         meeting_ids.append(meeting_id)
+#
+#     ua_webinars = get_all_zoom_webinars()
+#     for webinar in ua_webinars:
+#         webinar_id = webinar["webinar_id"]
+#         webinar_ids.append(webinar_id)
+#
+#     return meeting_ids, webinar_ids
 
 
 list_of_webinar_registrants = []
@@ -328,8 +343,8 @@ def get_web_reg(web_id=None, web_topic=None, token_arg=None):
     # print("token_arg?", token_arg)
     # print("built_url?", the_built_url)
     response = requests.request("GET", the_built_url, headers=headers)  # , payload=payload
-    trading_bot_data = response.text.encode('utf8')
-    parsed_response = json.loads(trading_bot_data)
+    webinars_data = response.text.encode('utf8')
+    parsed_response = json.loads(webinars_data)
     # print("parsed response ", parsed_response)
     # Pull out all of the registrants
     if parsed_response['registrants']:
@@ -387,8 +402,8 @@ def get_meeting_reg(meet_id=None, meet_topic=None, token_arg=None):
     # print("token_arg?", token_arg)
     # print("built_url?", the_built_url)
     response = requests.request("GET", the_built_url, headers=headers)  # , payload=payload
-    trading_bot_data = response.text.encode('utf8')
-    parsed_response = json.loads(trading_bot_data)
+    meetings_data = response.text.encode('utf8')
+    parsed_response = json.loads(meetings_data)
     # print("parsed response ", parsed_response)
     # Pull out all of the registrants
     if parsed_response['registrants']:
@@ -416,6 +431,85 @@ def get_meeting_reg(meet_id=None, meet_topic=None, token_arg=None):
     if token:
         get_meeting_reg(meet_id, meet_topic, token)
     return list_of_meeting_registrants
+
+
+list_of_meeting_participants = []
+
+
+def get_meeting_participants(meet_id=None, meet_topic=None, token_arg=None):
+    """
+    Function to loop through all meeting IDs with participants
+    instead of registrants and return a list dicts with
+    email, first_name, last_name, meeting_topic, meeting_id
+    """
+    # for meeting in list_of_meetings:
+    #     meeting_id = meeting["meeting_id"]
+    #     meeting_topic = meeting["meeting_topic"]
+    
+    # "/v2/meetings/81483069736/registrants?next_page_token=iWbzXWx6sPv2Zb5n6DdhKZvmFeArfLrodb2&page_size=30&status=approved"
+    base_url = "https://api.zoom.us/v2/past_meetings/"
+    endpoint = "/participants?status=approved"
+    if not meet_id:
+        return False
+    the_built_url = base_url + str(meet_id) + endpoint
+    if token_arg:
+        the_built_url += '&next_page_token=' + str(token_arg)
+    
+    # Get the first page
+    # print("token_arg?", token_arg)
+    # print("built_url?", the_built_url)
+    response = requests.request("GET", the_built_url, headers=headers)  # , payload=payload
+    if response.status_code == 200:
+        print("success")
+    
+        past_meetings_data = response.text.encode('utf8')
+        parsed_response = json.loads(past_meetings_data)
+        # pprint(parsed_response)
+        
+        # Pull out all of the registrants
+        if parsed_response['participants']:
+            for participant in parsed_response['participants']:
+                # TODO: some meetings don't have registrants. check for participants instead
+                participant_email = participant["user_email"].lower()
+                participant_name_split = participant["name"].split(maxsplit=1)
+                # print(participant_name_split)
+                # TODO: figure out how to check for duplicates for each meeting NOT duplicates within the whole list
+                #  ex. student 1 has attended meeting 101, 202, and 303
+                #  student 1 joined meeting 303 3 times and is listed 3 times with the same email address for meeting 303
+                #  student 1 should only be in the overall list 3 times (1 listing per meeting attended)
+                #  [{"name": student 1, "meeting": 101}, {"name": student 1, "meeting": 202}, {"name": student 1, "meeting": 303}]
+                #  currently student 1 is being listed 6 times
+                #  (5 times - 1 listing for meeting 101, 202 and 303 + 2 extra times they joined meeting 303)
+                #  [{"name": student 1, "meeting": 101}, {"name": student 1, "meeting": 202},
+                #   {"name": student 1, "meeting": 303}, {"name": student 1, "meeting": 303}, {"name": student 1, "meeting": 303}]
+                # if participant_email not in participant["user_email"]:
+                if len(participant_name_split) > 1:
+                    first_name = participant_name_split[0]
+                    last_name = participant_name_split[1]
+                    meeting_participant_info = {"email": participant_email,
+                                               "first_name": first_name,
+                                               "last_name": last_name,
+                                               "meeting_id": meet_id,
+                                               "meeting_topic": meet_topic}
+                    list_of_meeting_participants.append(meeting_participant_info)
+                else:
+                    first_name = participant_name_split[0]
+                    meeting_participant_info = {"email": participant_email,
+                                               "first_name": first_name,
+                                               "meeting_id": meet_id,
+                                               "meeting_topic": meet_topic}
+                    list_of_meeting_participants.append(meeting_participant_info)
+
+        pprint(list_of_meeting_participants)
+        if parsed_response["next_page_token"]:
+            token = parsed_response["next_page_token"]
+
+        # print("print token", token)
+            if token:
+                get_meeting_participants(meet_id, meet_topic, token)
+    elif response.status_code == 404:
+        print("Response Returned HTTP Status Code 404: There was an error getting meeting information.")
+    return list_of_meeting_participants
 
 
 def store_webinar_registrants():
@@ -473,9 +567,10 @@ def store_meeting_registrants():
     # create a new worksheet in the spreadsheet named "Registrants"
     meeting_registrants_wks = meeting_registrants_sheet.add_worksheet("Registrants")
     
-    # meeting_registrants = get_meeting_reg()
+    meeting_registrants_participants = list_of_meeting_registrants + list_of_meeting_participants
+    
     # turn the students info into a dataframe to load into Google Sheets
-    meeting_registrants_df = pd.DataFrame(list_of_meeting_registrants)  # , columns=['Participant Email Address', 'Participant First Name', 'Participant Last Name']
+    meeting_registrants_df = pd.DataFrame(meeting_registrants_participants)  # , columns=['Participant Email Address', 'Participant First Name', 'Participant Last Name']
     
     # start entering the data in the sheet at row 1, column 1
     meeting_registrants_wks.set_dataframe(meeting_registrants_df, start=(1, 1), copy_index=False, copy_head=True)
