@@ -294,6 +294,7 @@ def get_all_zoom_webinars(token_arg=None):
             if token:
                 get_all_zoom_meetings(token)
     # print("The Webinars")
+    # pprint(list_of_webinars)
     # logger.info(pformat(list_of_webinars))
     # list_of_users = parsed_data["users"]
     # print("the users", list_of_users)
@@ -486,19 +487,20 @@ def get_meeting_participants(meet_id=None, meet_topic=None, token_arg=None):
                 # if len(participant_name_split) > 1:
                     first_name = participant_name_split[0]
                     last_name = participant_name_split[1]
-                    meeting_participant_info = {"email": participant_email,
-                                               "first_name": first_name,
-                                               "last_name": last_name,
-                                               "meeting_id": meet_id,
-                                               "meeting_topic": meet_topic}
-                    list_of_meeting_participants.append(meeting_participant_info)
-                else:
-                    first_name = participant_name_split[0]
-                    meeting_participant_info = {"email": participant_email,
-                                               "first_name": first_name,
-                                               "meeting_id": meet_id,
-                                               "meeting_topic": meet_topic}
-                    list_of_meeting_participants.append(meeting_participant_info)
+                    if "last_name" in participant:
+                        meeting_participant_info = {"email": participant_email,
+                                                   "first_name": first_name,
+                                                   "last_name": last_name,
+                                                   "meeting_id": meet_id,
+                                                   "meeting_topic": meet_topic}
+                        list_of_meeting_participants.append(meeting_participant_info)
+                    else:
+                        first_name = participant_name_split[0]
+                        meeting_participant_info = {"email": participant_email,
+                                                   "first_name": first_name,
+                                                   "meeting_id": meet_id,
+                                                   "meeting_topic": meet_topic}
+                        list_of_meeting_participants.append(meeting_participant_info)
 
         pprint(list_of_meeting_participants)
         if parsed_response["next_page_token"]:
@@ -561,7 +563,7 @@ def store_meeting_registrants():
     # client = pygsheets.authorize(service_account_file='credentials.json')
     #   create a new spreadsheet in the given folder
     today = date.today()
-    meeting_registrants_sheet = client.create(title="UA Meeting Registrants " + str(today),
+    meeting_registrants_sheet = client.create(title="UA Meeting Participants & Registrants" + str(today),
                                               folder="1cIjZbTLwNEDo4YdknD8bUu9VPx-Ky7I-")
     
     # create a new worksheet in the spreadsheet named "Registrants"
