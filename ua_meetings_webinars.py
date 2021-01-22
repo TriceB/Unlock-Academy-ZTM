@@ -16,6 +16,7 @@ import os
 import json
 from datetime import datetime, timedelta, date
 from pprint import pprint, pformat
+from collections import OrderedDict
 import jwt
 import http.client
 import logging
@@ -88,14 +89,29 @@ def main():
         if meeting_type == 2:
             meeting_id = meeting["meeting_id"]
             meeting_topic = meeting["meeting_topic"]
+            meeting_uuid = meeting["meeting_uuid"]
             meeting_id_topic = {"meeting_id": meeting_id,
-                                "meeting_topic": meeting_topic
+                                "meeting_topic": meeting_topic,
+                                "meeting_uuid": meeting_uuid
                                 }
             meetings_with_participants.append(meeting_id_topic)
-    pprint(meetings_with_participants)
+    # print("meetings with participants")
+    # pprint(meetings_with_participants)
+    
     for meeting in meetings_with_participants:
-        get_meeting_participants(meeting["meeting_id"], meeting["meeting_topic"])
-
+        get_meeting_instances(meeting["meeting_id"], meeting["meeting_topic"])
+        
+    print("LIST OF MEETING INSTANCES")
+    pprint(list_of_meeting_instances)
+    
+    for meeting in list_of_meeting_instances:
+        # print(meeting)
+        # print(meeting["meeting_instances"])
+        # get_meeting_participants(meeting["meeting_id"], meeting["meeting_instances"], meeting["meeting_topic"])
+        test_get_participants(meeting["meeting_id"], meeting["meeting_instances"], meeting["meeting_topic"])
+        
+    print("Meeting Participants")
+    pprint(test_list_of_meeting_participants)
     # store_webinar_registrants()
     # store_meeting_registrants()
     # print(list_of_meetings)
@@ -230,6 +246,65 @@ def get_all_zoom_meetings(token_arg=None):
     
     return list_of_meetings
 
+
+# TODO: How to get participants from past meeting instances in order to use the UUID instead of the ID
+#  If using past meeting instances - "/v2/past_meetings/89177533762/instances"
+#  How do I pick which UUID to use
+#  Using the first UUID - this will only work for meetings that only produce 1 past uuid
+#  Using the last UUID - should be more accurate
+#  currently creating a dict with meeting information
+#  In the dict, for meeting ID, create a list of UUIDs
+#  use negative indexing to pull that last uuid from the list uuids for each meeting
+
+list_of_meeting_instances = []
+
+
+def get_meeting_instances(meet_id=None, meet_topic=None, token_arg=None):
+    """
+    Function to return a list of all past (ended) meeting instances
+    Zoom Meetings all generate a new UUID upon meeting creation and after meetings have ended.
+    Each ended meeting, will create a new UUID which must be used to get the participants
+    Using the first UUID, generated when the meeting is created will not pull the participants correctly
+    https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/pastmeetings
+    """
+    base_url = "https://api.zoom.us/v2/past_meetings/"
+    endpoint = "/instances?status=approved"
+    if not meet_id:
+        return False
+    the_built_url = base_url + str(meet_id) + endpoint
+    if token_arg:
+        the_built_url += '&next_page_token=' + str(token_arg)
+    
+    # Get the first page
+    # print("token_arg?", token_arg)
+    # print("built_url?", the_built_url)
+    response = requests.request("GET", the_built_url, headers=headers)  # , payload=payload
+    meetings_data = response.text.encode('utf8')
+    parsed_response = json.loads(meetings_data)
+    meetings = parsed_response["meetings"]
+    # print("parsed response for meeting ID - " + str(meet_id))
+    # print(parsed_response)
+    # if parsed_response['meetings']:
+    
+    for meeting in meetings:
+        if "uuid" in meeting:
+            
+            # list_of_uuids = [meeting["uuid"]]
+            meeting_instance = {"meeting_id": meet_id,
+                                "meeting_topic": meet_topic,
+                                "meeting_instances": meeting["uuid"]
+                                }
+            
+            # meeting_instance["meeting_instances"] = meeting["uuid"]
+            list_of_meeting_instances.append(meeting_instance)
+    # else:
+    #     for meeting in meetings:
+    #
+    #         list_of_meeting_instances[0]["meeting_instance"]["meeting_instances"].append(meeting["uuid"])
+    #             # meeting_instance["meeting_instances"].append(meeting["uuid"])
+    
+    return list_of_meeting_instances
+    
 
 list_of_webinars = []
 
@@ -413,15 +488,15 @@ def get_meeting_reg(meet_id=None, meet_topic=None, token_arg=None):
             # if meeting_id == meet_id:
             if "last_name" in registrant:
                 meeting_registrant_info = {"email": registrant["email"].lower(),
-                                            "first_name": registrant["first_name"],
-                                            "last_name": registrant["last_name"],
-                                            "meeting_id": meet_id,
+                                           "first_name": registrant["first_name"],
+                                           "last_name": registrant["last_name"],
+                                           "meeting_id": meet_id,
                                            "meeting_topic": meet_topic}
                 list_of_meeting_registrants.append(meeting_registrant_info)
             else:
                 meeting_registrant_info = {"email": registrant["email"].lower(),
-                                            "first_name": registrant["first_name"],
-                                            "meeting_id": meet_id,
+                                           "first_name": registrant["first_name"],
+                                           "meeting_id": meet_id,
                                            "meeting_topic": meet_topic}
                 list_of_meeting_registrants.append(meeting_registrant_info)
         
@@ -437,7 +512,7 @@ def get_meeting_reg(meet_id=None, meet_topic=None, token_arg=None):
 list_of_meeting_participants = []
 
 
-def get_meeting_participants(meet_id=None, meet_topic=None, token_arg=None):
+def get_meeting_participants(meet_id=None, meet_instance=None, meet_topic=None, token_arg=None):
     """
     Function to loop through all meeting IDs with participants
     instead of registrants and return a list dicts with
@@ -447,32 +522,43 @@ def get_meeting_participants(meet_id=None, meet_topic=None, token_arg=None):
     #     meeting_id = meeting["meeting_id"]
     #     meeting_topic = meeting["meeting_topic"]
     
+    # TODO: In Zoom API for GET Meeting Participants, both meetingId and meetingUUID work to get participants
+    #  one will return a blank data set or an error, while the other will return participants
+    #  How do I know which will work to actually get participants??
     # "/v2/meetings/81483069736/registrants?next_page_token=iWbzXWx6sPv2Zb5n6DdhKZvmFeArfLrodb2&page_size=30&status=approved"
     base_url = "https://api.zoom.us/v2/past_meetings/"
     endpoint = "/participants?status=approved"
-    if not meet_id:
+    if not meet_instance:
         return False
-    the_built_url = base_url + str(meet_id) + endpoint
+    the_built_url = base_url + str(meet_instance) + endpoint
     if token_arg:
         the_built_url += '&next_page_token=' + str(token_arg)
-    
+    print("ZOOM URL - " + str(the_built_url))
     # Get the first page
     # print("token_arg?", token_arg)
     # print("built_url?", the_built_url)
     response = requests.request("GET", the_built_url, headers=headers)  # , payload=payload
+    # get the response back for each Meeting ID to find out which IDs are being processed fine and which do not exist
     if response.status_code == 200:
-        print("success")
+        print(str(meet_id) + " - Success")
     
         past_meetings_data = response.text.encode('utf8')
         parsed_response = json.loads(past_meetings_data)
         # pprint(parsed_response)
         
-        # Pull out all of the registrants
+        # Pull out all of the participants
         if parsed_response['participants']:
             for participant in parsed_response['participants']:
-                # TODO: some meetings don't have registrants. check for participants instead
+                # student_emails_list = []
+                # store the email in lower case
                 participant_email = participant["user_email"].lower()
+                # student_emails_list.append(participant_email)
+                # print(str(meet_id) + " Student Emails - " + str(student_emails_list))
+                print("Participant email - BEFORE IF " + str(participant_email))
+                # split name field in order to get the first and last name separated
                 participant_name_split = participant["name"].split(maxsplit=1)
+                # for student in list_of_meeting_participants:
+                #     student_emails_list.append(student["email"].lower())
                 # print(participant_name_split)
                 # TODO: figure out how to check for duplicates for each meeting NOT duplicates within the whole list
                 #  ex. student 1 has attended meeting 101, 202, and 303
@@ -483,25 +569,26 @@ def get_meeting_participants(meet_id=None, meet_topic=None, token_arg=None):
                 #  (5 times - 1 listing for meeting 101, 202 and 303 + 2 extra times they joined meeting 303)
                 #  [{"name": student 1, "meeting": 101}, {"name": student 1, "meeting": 202},
                 #   {"name": student 1, "meeting": 303}, {"name": student 1, "meeting": 303}, {"name": student 1, "meeting": 303}]
-                if participant_email not in participant["user_email"]:
-                # if len(participant_name_split) > 1:
-                    first_name = participant_name_split[0]
-                    last_name = participant_name_split[1]
-                    if "last_name" in participant:
-                        meeting_participant_info = {"email": participant_email,
-                                                   "first_name": first_name,
-                                                   "last_name": last_name,
-                                                   "meeting_id": meet_id,
-                                                   "meeting_topic": meet_topic}
-                        list_of_meeting_participants.append(meeting_participant_info)
-                    else:
-                        first_name = participant_name_split[0]
-                        meeting_participant_info = {"email": participant_email,
-                                                   "first_name": first_name,
-                                                   "meeting_id": meet_id,
-                                                   "meeting_topic": meet_topic}
-                        list_of_meeting_participants.append(meeting_participant_info)
-
+                # if participant_email not in student_emails_list:
+                print("*** Participant email - AFTER IF *** " + str(participant_email))
+                if len(participant_name_split) > 1:
+                    participant_first_name = participant_name_split[0]
+                    participant_last_name = participant_name_split[1]
+                    # if "last_name" in participant:
+                    meeting_participant_info = {"email": participant_email,
+                                                "first_name": participant_first_name,
+                                                "last_name": participant_last_name,
+                                                "meeting_id": meet_id,
+                                                "meeting_topic": meet_topic}
+                    list_of_meeting_participants.append(meeting_participant_info)
+                else:
+                    participant_first_name = participant_name_split[0]
+                    meeting_participant_info = {"email": participant_email,
+                                                "first_name": participant_first_name,
+                                                "meeting_id": meet_id,
+                                                "meeting_topic": meet_topic}
+                    list_of_meeting_participants.append(meeting_participant_info)
+        print("Meeting Participants")
         pprint(list_of_meeting_participants)
         if parsed_response["next_page_token"]:
             token = parsed_response["next_page_token"]
@@ -510,8 +597,80 @@ def get_meeting_participants(meet_id=None, meet_topic=None, token_arg=None):
             if token:
                 get_meeting_participants(meet_id, meet_topic, token)
     elif response.status_code == 404:
-        print("Response Returned HTTP Status Code 404: There was an error getting meeting information.")
+        print(str(meet_id) + " - Response Returned HTTP Status Code 404: There was an error getting meeting information.")
     return list_of_meeting_participants
+
+
+test_list_of_meeting_participants = dict()
+
+
+def test_get_participants(meet_id=None, meet_instance=None, meet_topic=None, token_arg=None):
+    """
+    Testing code help from Coach Mike before adding to main code
+    """
+    base_url = "https://api.zoom.us/v2/past_meetings/"
+    endpoint = "/participants?status=approved"
+    if not meet_instance:
+        return False
+    the_built_url = base_url + str(meet_instance) + endpoint
+    if token_arg:
+        the_built_url += '&next_page_token=' + str(token_arg)
+    print("ZOOM URL - " + str(the_built_url))
+    # Get the first page
+    # print("token_arg?", token_arg)
+    # print("built_url?", the_built_url)
+    response = requests.request("GET", the_built_url, headers=headers)  # , payload=payload
+    # get the response back for each Meeting ID to find out which IDs are being processed fine and which do not exist
+    if response.status_code == 200:
+        print(str(meet_id) + " - Success")
+
+        past_meetings_data = response.text.encode('utf8')
+        parsed_response = json.loads(past_meetings_data)
+        # pprint(parsed_response)
+
+        # Pull out all of the registrants
+        if parsed_response['participants']:
+            for participant in parsed_response['participants']:
+                participant_email = participant["user_email"].lower()
+                # check if the email field is blank - blanks become a catch-all for all meetings
+                if participant["user_email"] != "":
+                    # split name field in order to get the first and last name separate
+                    participant_name_split = participant["name"].split(maxsplit=1)
+                    if len(participant_name_split) > 1:
+                        # store the split name
+                        participant_first_name = participant_name_split[0]
+                        participant_last_name = participant_name_split[1]
+                        # check if the email address already exists in the dict to make sure it's not a duplicate
+                        if test_list_of_meeting_participants.get(participant_email) is None:
+                            # create an ordered dict
+                            user_data = OrderedDict()
+                            # add first_name key with participant_first_name as the value
+                            user_data['first_name'] = participant_first_name
+                            # add last_name key with participant_last_name as the value
+                            user_data['last_name'] = participant_last_name
+                            # create a new dict for meetings to store one or more meetings in later
+                            user_data['meetings'] = dict()
+                            # fill in the meetings key with dict of meeting id and topic as values
+                            user_data['meetings'] = {
+                                "id": meet_id,
+                                "topic": meet_topic
+                            }
+                            # store the user data into test_list_of_meeting_participants dict using the email as the dict key
+                            test_list_of_meeting_participants[participant_email] = user_data
+                        # else, if the participant_email is not None, the participant_email already exists as a key in the dict
+                        else:
+                            # store the dict of meeting id and meeting topic in a new dict using the meeting id as the key
+                            test_list_of_meeting_participants[participant_email]['meetings'][meet_id] = {
+                                "id": meet_id,
+                                "topic": meet_topic
+                            }
+                            # update the test_list_of_meeting_participants with the new dict created above
+                            test_list_of_meeting_participants[participant_email].update(test_list_of_meeting_participants[participant_email]['meetings'][meet_id])
+    elif response.status_code == 404:
+        print(str(meet_id) + " - Response Returned HTTP Status Code 404: There was an error getting meeting information.")
+    # print("Coach Mike's test")
+    # pprint(test_list_of_meeting_participants)
+    return test_list_of_meeting_participants
 
 
 def store_webinar_registrants():
