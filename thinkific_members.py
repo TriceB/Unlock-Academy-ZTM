@@ -21,6 +21,7 @@ from google.oauth2 import service_account
 import os
 from datetime import datetime, date
 import time
+from pprint import pprint
 
 
 # THINKIFIC_API_KEY = os.environ.get('THINKIFIC_API_KEY')
@@ -37,7 +38,7 @@ params = (
     ('page', '1'),
     # as of 9/21 there are a total of 17962 users
     # as of 11/7 there are a total of 18261 users
-    ('limit', '20000')
+    ('limit', '50000')
     # ('limit', '5000')
 )
 
@@ -75,6 +76,9 @@ def main():
     store_thinkific_members()
     print("Store Thinkific Members Run Time --> " + str(time_elapsed))
     print("End/Current Local Time --> " + str(time.ctime()))
+    
+    
+members_email_name = []
 
 
 def get_members():
@@ -82,13 +86,18 @@ def get_members():
     This function will access the Thinkific API and get all of the members currently enrolled in Unlock Academy
     """
     members = members_parsed["items"]
-    members_email_name = []
+    
     for member in members:
+        print(member)
+        # member_name_split = member["name"].split(maxsplit=1)
+        # if len(member_name_split) > 1:
+        #     member_first_name = member_name_split[0]
+        #     member_last_name = member_name_split[1]
         member = {"email": member["email"], "first_name": member["first_name"], "last_name": member["last_name"]}
         members_email_name.append(member)
         # this will result in a list of tuples [(email, name), (email, name)]
-        # sort by email addresses of tuple which is the 1st element of each tuple
-    members_email_name = sorted(members_email_name, key=lambda i: i['first_name'])
+        
+    # pprint(members_email_name)
     return members_email_name
 
 
@@ -100,14 +109,16 @@ def store_thinkific_members():
     """
     Function to store all Thinkific Members who are enrolled in UA in Google Sheets
     """
-    today = date.today()
+    today_date_time = datetime.now()
+    report_date_time = today_date_time.strftime("%b %d, %Y %H:%M:%S")
     #   create a new spread sheet in the given folder
-    thinkific_members_sheet = client.create(title="UA Thinkific Members " + str(today), folder="1cIjZbTLwNEDo4YdknD8bUu9VPx-Ky7I-")
+    thinkific_members_sheet = client.create(title="UA Thinkific Members " + str(report_date_time),
+                                            folder="1cIjZbTLwNEDo4YdknD8bUu9VPx-Ky7I-")
     #   add a new worksheet to the spreadsheet
-    thinkific_wks = thinkific_members_sheet.add_worksheet("Members")
+    thinkific_wks = thinkific_members_sheet.add_worksheet("UA Members")
     #   create headers in the worksheet (A1 and B1)
     # thinkific_wks.insert_rows(0, values=["Member Email Address", "Member Name"])
-    thinkific_df = pd.DataFrame(get_members())  # , columns=["Member Email Address", "Member First Name", "Member Last Name"]
+    thinkific_df = pd.DataFrame(members_email_name)  # , columns=["Member Email Address", "Member First Name", "Member Last Name"]
     thinkific_wks.set_dataframe(thinkific_df, start=(1, 1), copy_index=False, copy_head=True, extend=True)
     # thinkific_object = thinkific_df.select_dtypes(['object'])
     # thinkific_df[thinkific_object.columns] = thinkific_object.apply(lambda x: x.str.strip())
@@ -117,8 +128,7 @@ def store_thinkific_members():
     thinkific_wks.cell("A1").set_text_format("bold", True)
     thinkific_wks.cell("B1").set_text_format("bold", True)
     thinkific_wks.cell("C1").set_text_format("bold", True)
-    thinkific_df.sort_values(by='first_name', ascending=True)
-    thinkific_df.sort_values(by='last_name', ascending=True)
+    thinkific_wks.sort_range(start='A2', end='D50000', basecolumnindex=1, sortorder='ASCENDING')
     #   Share spreadsheet with read only access to anyone with the link
     thinkific_members_sheet.share('', role='reader', type='anyone')
     #   print the direct link to the spreadsheet for the user running the code to access
