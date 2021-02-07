@@ -25,6 +25,7 @@ import requests
 import pygsheets
 import pandas as pd
 from google.oauth2 import service_account
+# from UnlockAcademyZTM.thinkific_members import get_members
 
 
 logger = logging.getLogger(__name__)
@@ -105,14 +106,14 @@ def main():
     for meeting in meetings_with_registrants:
         get_meeting_reg(meeting["meeting_id"], meeting["meeting_topic"])
     # print(meetings_with_registrants)
-    
+
     # print("Meeting Registrants")
     # pprint(list_of_meeting_registrants)
-    
+
     meeting_reg_time = time.perf_counter()
     print("Get Meeting Registrants Run Time --> " + str(meeting_reg_time) +
           " Current Total Time --> " + str(meeting_reg_time - start_time))
-    
+
     meetings_with_participants = []
     for meeting in list_of_meetings:
         # print(meeting)
@@ -138,7 +139,7 @@ def main():
     meeting_instances_time = time.perf_counter()
     print("Get Meeting Instances Run Time --> " + str(meeting_instances_time) +
           " Current Total Time --> " + str(meeting_instances_time - start_time))
-    
+
     for meeting in list_of_meeting_instances:
         # print("A MEETING")
         # print(meeting)
@@ -149,14 +150,14 @@ def main():
                 # print(meeting["meeting_instances"])
                 get_meeting_participants(meeting["meeting_id"], instance, meeting["meeting_topic"])
                 # test_get_participants(meeting["meeting_id"], instance, meeting["meeting_topic"])
-        
+
     # print("Meeting Participants")
     # pprint(list_of_meeting_participants)
-    
+
     meeting_participants_time = time.perf_counter()
     print("Get Meeting Participants Run Time --> " + str(meeting_participants_time) +
           " Current Total Time --> " + str(meeting_participants_time - start_time))
-    
+
     for webinar in list_of_webinar_instances:
         # print("A webinar")
         # print(webinar)
@@ -166,13 +167,17 @@ def main():
                 # print(instance)
                 # print(webinar["webinar_instances"])
                 get_webinar_participants(webinar["webinar_id"], instance, webinar["webinar_topic"])
-    
+
     webinar_participants_time = time.perf_counter()
     print("Get Webinar Participants Run Time --> " + str(webinar_participants_time) +
           " Current Total Time --> " + str(webinar_participants_time - start_time))
     
     # print("Webinar Participants")
     # pprint(list_of_webinar_participants)
+    
+    # get_non_members()
+    # print("Non Members")
+    # pprint(list_of_non_members)
     
     store_meetings_webinars()
     store_webinar_registrants()
@@ -959,13 +964,13 @@ def test_get_participants(meet_id=None, meet_instance=None, meet_topic=None, tok
 
 def store_meetings_webinars():
     """
-    Function to store all Webinar registrants in Google Sheets
+    Function to store all Meetings & Webinars in Google Sheets
     """
     #   authorize Python Sheets access to Google Sheets
     # client = pygsheets.authorize(service_account_file='credentials.json')
     #   create a new spreadsheet in the given folder
     today_date_time = datetime.now()
-    report_date_time = today_date_time.strftime("%b %d %Y %H:%M:%S")
+    report_date_time = today_date_time.strftime("%b %d, %Y %H:%M:%S")
     meetings_webinar_sheet = client.create(title="UA Meetings & Webinars " + str(report_date_time),
                                            folder="1cIjZbTLwNEDo4YdknD8bUu9VPx-Ky7I-")
     
@@ -1017,7 +1022,7 @@ def store_webinar_registrants():
     # client = pygsheets.authorize(service_account_file='credentials.json')
     #   create a new spreadsheet in the given folder
     today_date_time = datetime.now()
-    report_date_time = today_date_time.strftime("%b %d %Y %H:%M:%S")
+    report_date_time = today_date_time.strftime("%b %d, %Y %H:%M:%S")
     webinar_registrants_sheet = client.create(title="UA Webinar Registrants " + str(report_date_time),
                                               folder="1cIjZbTLwNEDo4YdknD8bUu9VPx-Ky7I-")
     
@@ -1026,8 +1031,7 @@ def store_webinar_registrants():
 
     # webinar_registrants = get_web_reg()
     # turn the students info into a dataframe to load into Google Sheets
-    webinar_registrants_df = pd.DataFrame(list_of_webinar_registrants
-                                          )     # , columns=['Participant Email Address', 'Participant First Name', 'Participant Last Name']
+    webinar_registrants_df = pd.DataFrame(list_of_webinar_registrants)     # , columns=['Participant Email Address', 'Participant First Name', 'Participant Last Name']
 
     # start entering the data in the sheet at row 1, column 1
     webinar_registrants_wks.set_dataframe(webinar_registrants_df, start=(1, 1), copy_index=False, copy_head=True)
@@ -1059,7 +1063,7 @@ def store_webinar_participants():
     # client = pygsheets.authorize(service_account_file='credentials.json')
     #   create a new spreadsheet in the given folder
     today_date_time = datetime.now()
-    report_date_time = today_date_time.strftime("%b %d %Y %H:%M:%S")
+    report_date_time = today_date_time.strftime("%b %d, %Y %H:%M:%S")
     webinar_participants_sheet = client.create(title="UA Webinar Participants " + str(report_date_time),
                                                folder="1cIjZbTLwNEDo4YdknD8bUu9VPx-Ky7I-")
     
@@ -1100,7 +1104,7 @@ def store_meeting_registrants():
     # client = pygsheets.authorize(service_account_file='credentials.json')
     #   create a new spreadsheet in the given folder
     today_date_time = datetime.now()
-    report_date_time = today_date_time.strftime("%b %d %Y %H:%M:%S")
+    report_date_time = today_date_time.strftime("%b %d, %Y %H:%M:%S")
     meeting_registrants_sheet = client.create(title="UA Meeting Registrants " + str(report_date_time),
                                               folder="1cIjZbTLwNEDo4YdknD8bUu9VPx-Ky7I-")
     
@@ -1137,13 +1141,13 @@ def store_meeting_registrants():
 
 def store_meeting_participants():
     """
-    Function to store all Meeting registrants in Google Sheets
+    Function to store all Meeting participants in Google Sheets
     """
     #   authorize Python Sheets access to Google Sheets
     # client = pygsheets.authorize(service_account_file='credentials.json')
     #   create a new spreadsheet in the given folder
     today_date_time = datetime.now()
-    report_date_time = today_date_time.strftime("%b %d %Y %H:%M:%S")
+    report_date_time = today_date_time.strftime("%b %d, %Y %H:%M:%S")
     meeting_participants_sheet = client.create(title="UA Meeting Participants " + str(report_date_time),
                                                folder="1cIjZbTLwNEDo4YdknD8bUu9VPx-Ky7I-")
     
