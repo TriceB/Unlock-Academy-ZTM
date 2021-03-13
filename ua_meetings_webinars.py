@@ -1,15 +1,19 @@
 """
-Get registrants from all meetings/webinars
-# webinar types 5 or 9 - get all instances of trading bot webinars
-# meeting types 2 or 8
-# want to get anybody who's attended any UA Zooms
-# tag topic to the attendee to show what meeting/webinar they attended
+Get registrants/participants from all meetings/webinars
+webinar types 5 or 9
+meeting types 2 or 8
 
-How to get all the registrants from all meetings/webinars
-# List Meeting Registrants
-# store meetings in new variable in function for registrants
-# loop through and get registrants
-# {email, first name, last name, meeting topic}
+Get all users (those with access to host meetings/webinars on the UA account)
+
+Get all webinars and meetings
+
+Get all registrants for each webinar/meeting
+
+Get each instance of recurring webinars and meetings from
+
+Use the instances to get all participants from each recurring webinar/meeting
+
+Store all data to Google Sheets
 """
 
 import os
@@ -28,25 +32,26 @@ from google.oauth2 import service_account
 # from UnlockAcademyZTM.thinkific_members import get_members
 
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(name)s:%(message)s')
-
-file_handler = logging.FileHandler('webinars_check2.log')
-file_handler.setFormatter(formatter)
-
-logger.addHandler(file_handler)
+# logger = logging.getLogger(__name__)
+# logger.setLevel(logging.INFO)
+# formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(name)s:%(message)s')
+#
+# file_handler = logging.FileHandler('webinars_check2.log')
+# file_handler.setFormatter(formatter)
+#
+# logger.addHandler(file_handler)
 
 #   Scopes required for Google sheets. If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly', 'https://www.googleapis.com/auth/drive',
           'https://www.googleapis.com/auth/drive.file']
 
-
-with open('credentials.json') as source:
+script_directory = os.path.dirname(os.path.abspath(__file__))
+credentials_file = os.path.join(script_directory, 'credentials.json')
+with open(credentials_file) as source:
     info = json.load(source)
 credentials = service_account.Credentials.from_service_account_info(info)
 #   authorize Python Sheets access to Google Sheets
-client = pygsheets.authorize(service_account_file='credentials.json')
+client = pygsheets.authorize(service_account_file=credentials_file)
 
 
 def main():
@@ -71,26 +76,28 @@ def main():
         webinar_id_topic = {"webinar_id": web_id,
                             "webinar_topic": web_topic}
         list_of_webinar_ids.append(webinar_id_topic)
-    
+
     for webinar in list_of_webinar_ids:
         get_web_reg(webinar["webinar_id"], webinar["webinar_topic"])
         get_webinar_instances(webinar["webinar_id"], webinar["webinar_topic"])
 
     # print("Webinar Registrants")
     # pprint(list_of_webinar_registrants)
-    
+    print("Webinar Instances")
+    pprint(list_of_webinar_instances)
+
     web_registrants_and_instances_time = time.perf_counter()
     print("Get Webinar Registrants & Instances Run Time --> " + str(web_registrants_and_instances_time) +
           " Current Total Time --> " + str(web_registrants_and_instances_time - start_time))
-    
+
     # print("list of webinar IDs")
     # pprint(list_of_webinar_ids)
     # print("list of webinar Instances")
     # pprint(list_of_webinar_instances)
-    
+
     # print("The List of meetings")
     # pprint(list_of_meetings)
-    
+
     meetings_with_registrants = []
     for meeting in list_of_meetings:
         # print(meeting)
@@ -133,62 +140,85 @@ def main():
     for meeting in meetings_with_participants:
         get_meeting_instances(meeting["meeting_id"], meeting["meeting_topic"])
 
-    # print("LIST OF MEETING INSTANCES")
-    # pprint(list_of_meeting_instances)
+    print("LIST OF MEETING INSTANCES")
+    pprint(list_of_meeting_instances)
 
     meeting_instances_time = time.perf_counter()
     print("Get Meeting Instances Run Time --> " + str(meeting_instances_time) +
           " Current Total Time --> " + str(meeting_instances_time - start_time))
 
+    meeting_instance_date_pairs = list()
     for meeting in list_of_meeting_instances:
         # print("A MEETING")
         # print(meeting)
         if "meeting_instances" in meeting:
-            for instance in meeting["meeting_instances"]:
-                # print("AN INSTANCE")
-                # print(instance)
-                # print(meeting["meeting_instances"])
-                get_meeting_participants(meeting["meeting_id"], instance, meeting["meeting_topic"])
+            # print(meeting["meeting_instances"])
+            # crate pairs from the list of meeting instances and date
+            while meeting["meeting_instances"]:
+                # pop the first 2 items from the list, this will be an instance/date pair
+                meet_inst = meeting["meeting_instances"].pop(0)
+                meet_date = meeting["meeting_instances"].pop(0)
+                # append it to the pairs list - this will be a list of tuples
+                meeting_instance_date_pairs.append((meet_inst, meet_date))
+            
+            # iterate over the pairs list to access the instance and pair per tuple
+            while meeting_instance_date_pairs:
+                # since the first item is always popped out of the list, the next pair is always the first item
+                first_pair = meeting_instance_date_pairs.pop(0)
+                instance = first_pair[0]
+                instance_date_time = first_pair[1]
+                # print("THE INSTANCE - ", instance)
+                # print("THE DATE - ", instance_date_time)
+                get_meeting_participants(meeting["meeting_id"], instance, meeting["meeting_topic"], instance_date_time)
                 # test_get_participants(meeting["meeting_id"], instance, meeting["meeting_topic"])
 
-    # print("Meeting Participants")
-    # pprint(list_of_meeting_participants)
+    print("Meeting Participants")
+    pprint(list_of_meeting_participants)
 
     meeting_participants_time = time.perf_counter()
     print("Get Meeting Participants Run Time --> " + str(meeting_participants_time) +
           " Current Total Time --> " + str(meeting_participants_time - start_time))
-
+    
+    web_instance_date_pairs = list()
     for webinar in list_of_webinar_instances:
         # print("A webinar")
         # print(webinar)
         if "webinar_instances" in webinar:
-            for instance in webinar["webinar_instances"]:
-                # print("AN INSTANCE")
-                # print(instance)
-                # print(webinar["webinar_instances"])
-                get_webinar_participants(webinar["webinar_id"], instance, webinar["webinar_topic"])
+            # crate pairs from the list of webinar instances and date
+            while webinar["webinar_instances"]:
+                # pop the first 2 items from the list, this will be an instance/date pair
+                web_inst = webinar["webinar_instances"].pop(0)
+                web_date = webinar["webinar_instances"].pop(0)
+                # append it to the pairs list - this will be a list of tuples
+                web_instance_date_pairs.append((web_inst, web_date))
+
+            # iterate over the pairs list to access the instance and pair per tuple
+            while web_instance_date_pairs:
+                # since the first item is always popped out of the list, the next pair is always the first item
+                first_pair = web_instance_date_pairs.pop(0)
+                instance = first_pair[0]
+                instance_date_time = first_pair[1]
+                # print("THE INSTANCE - ", instance)
+                # print("THE DATE - ", instance_date_time)
+                get_webinar_participants(webinar["webinar_id"], instance, webinar["webinar_topic"], instance_date_time)
 
     webinar_participants_time = time.perf_counter()
     print("Get Webinar Participants Run Time --> " + str(webinar_participants_time) +
           " Current Total Time --> " + str(webinar_participants_time - start_time))
-    
-    # print("Webinar Participants")
-    # pprint(list_of_webinar_participants)
-    
-    # get_non_members()
-    # print("Non Members")
-    # pprint(list_of_non_members)
+
+    print("Webinar Participants")
+    pprint(list_of_webinar_participants)
     
     store_meetings_webinars()
     store_webinar_registrants()
     store_webinar_participants()
     store_meeting_registrants()
     store_meeting_participants()
-    
+
     store_data_time = time.perf_counter()
     print("Store Data to Google Sheets Run Time --> " + str(store_data_time) +
           " Current Total Time --> " + str(store_data_time - start_time))
-    
+
     total_time_elapsed = time.perf_counter() - start_time
     print("End/Current Local Time --> " + str(time.ctime()) +
           " Total Run Time --> " + str(total_time_elapsed))
@@ -369,9 +399,15 @@ def get_meeting_instances(meet_id=None, meet_topic=None, token_arg=None):
     uuids_list = []
     for meeting in meetings:
         # print(meeting)
+        meeting_start_time = meeting["start_time"]
         # currently creating a new list for every uuid in meetings
         # TODO: try making a list above, separately, then just iterating over the list if instead of all meetings
         uuids_list.append(meeting["uuid"])
+        if isinstance(meeting_start_time, str):
+            meeting_start_time_format = '%Y-%m-%dT%H:%M:%SZ'
+            meeting_start_time = datetime.strptime(meeting_start_time, meeting_start_time_format)
+            # print("Meeting Start Time - ", meeting_start_time)
+        uuids_list.append(str(meeting_start_time))
     # if "uuid" in meeting:
         if len(parsed_response["meetings"]) == 1:
             # list_of_uuids = [meeting["uuid"]]
@@ -503,6 +539,7 @@ def get_webinar_instances(web_id=None, web_topic=None, token_arg=None):
     webinar_data = response.text.encode('utf8')
     parsed_response = json.loads(webinar_data)
     webinars = parsed_response["webinars"]
+    
     # print("parsed response for webinar ID - " + str(web_id))
     # print(parsed_response)
     # print(len(parsed_response["webinars"]))
@@ -513,13 +550,21 @@ def get_webinar_instances(web_id=None, web_topic=None, token_arg=None):
     uuids_list = []
     for webinar in webinars:
         # print(webinar)
+        webinar_start_time = webinar["start_time"]
+        
         # currently creating a new list for every uuid in webinars
         # TODO: try making a list above, separately, then just iterating over the list if instead of all webinars
         uuids_list.append(webinar["uuid"])
+        if isinstance(webinar_start_time, str):
+            webinar_start_time_format = '%Y-%m-%dT%H:%M:%SZ'
+            webinar_start_time = datetime.strptime(webinar_start_time, webinar_start_time_format)
+            # print("Webinar Start Time - ", webinar_start_time)
+        uuids_list.append(str(webinar_start_time))
         # if "uuid" in webinar:
         if len(parsed_response["webinars"]) == 1:
             # list_of_uuids = [webinar["uuid"]]
             webinar_instance["webinar_instances"] = uuids_list
+            # webinar_instance["webinar_start_time"]
             
             # webinar_instance["webinar_instances"] = webinar["uuid"]
             # list_of_webinar_instances.append(webinar_instance)
@@ -630,7 +675,7 @@ def get_web_reg(web_id=None, web_topic=None, token_arg=None):
 list_of_webinar_participants = []
 
 
-def get_webinar_participants(web_id=None, web_instance=None, web_topic=None, token_arg=None):
+def get_webinar_participants(web_id=None, web_instance=None, web_topic=None, web_instance_date_time=None, token_arg=None):
     """
     Function to loop through all webinar IDs with participants
     instead of registrants and return a list dicts with
@@ -660,7 +705,7 @@ def get_webinar_participants(web_id=None, web_instance=None, web_topic=None, tok
         past_webinars_data = response.text.encode('utf8')
         parsed_response = json.loads(past_webinars_data)
         # pprint(parsed_response)
-        # participant_emails_list = []
+        participant_emails_list = []
         # Pull out all of the participants
         if parsed_response['participants']:
             for participant in parsed_response['participants']:
@@ -698,7 +743,8 @@ def get_webinar_participants(web_id=None, web_instance=None, web_topic=None, tok
                                                 "last_name": participant_last_name,
                                                 "webinar_id": web_id,
                                                 "webinar_topic": web_topic,
-                                                "webinar_instance": web_instance
+                                                "webinar_instance": web_instance,
+                                                "webinar_date": web_instance_date_time
                                                 }
                     list_of_webinar_participants.append(webinar_participant_info)
                 else:
@@ -707,7 +753,8 @@ def get_webinar_participants(web_id=None, web_instance=None, web_topic=None, tok
                                                 "first_name": participant_first_name,
                                                 "webinar_id": web_id,
                                                 "webinar_topic": web_topic,
-                                                "webinar_instance": web_instance
+                                                "webinar_instance": web_instance,
+                                                "webinar_date": web_instance_date_time
                                                 }
                     list_of_webinar_participants.append(webinar_participant_info)
         # print("webinar Participants")
@@ -717,7 +764,7 @@ def get_webinar_participants(web_id=None, web_instance=None, web_topic=None, tok
             
             # print("print token", token)
             if token:
-                get_webinar_participants(web_id, web_instance, web_topic, token)
+                get_webinar_participants(web_id, web_instance, web_topic, web_instance_date_time, token)
     elif response.status_code == 404:
         print(str(web_id) + " - Response Returned HTTP Status Code 404: There was an error getting webinar information.")
     return list_of_webinar_participants
@@ -794,7 +841,7 @@ def get_meeting_reg(meet_id=None, meet_topic=None, token_arg=None):
 list_of_meeting_participants = []
 
 
-def get_meeting_participants(meet_id=None, meet_instance=None, meet_topic=None, token_arg=None):
+def get_meeting_participants(meet_id=None, meet_instance=None, meet_topic=None, meet_instance_date_time=None, token_arg=None):
     """
     Function to loop through all meeting IDs with participants
     instead of registrants and return a list dicts with
@@ -864,7 +911,8 @@ def get_meeting_participants(meet_id=None, meet_instance=None, meet_topic=None, 
                                                 "last_name": participant_last_name,
                                                 "meeting_id": meet_id,
                                                 "meeting_topic": meet_topic,
-                                                "meeting_instance": meet_instance
+                                                "meeting_instance": meet_instance,
+                                                "meeting_date": meet_instance_date_time
                                                 }
                     list_of_meeting_participants.append(meeting_participant_info)
                 else:
@@ -873,7 +921,8 @@ def get_meeting_participants(meet_id=None, meet_instance=None, meet_topic=None, 
                                                 "first_name": participant_first_name,
                                                 "meeting_id": meet_id,
                                                 "meeting_topic": meet_topic,
-                                                "meeting_instance": meet_instance
+                                                "meeting_instance": meet_instance,
+                                                "meeting_date": meet_instance_date_time
                                                 }
                     list_of_meeting_participants.append(meeting_participant_info)
         # print("Meeting Participants")
@@ -881,7 +930,7 @@ def get_meeting_participants(meet_id=None, meet_instance=None, meet_topic=None, 
         
         # print("print token", token)
         if token:
-            get_meeting_participants(meet_id, meet_instance, meet_topic, token)
+            get_meeting_participants(meet_id, meet_instance, meet_topic,meet_instance_date_time, token)
     elif response.status_code == 404:
         print(str(meet_id) + " - Response Returned HTTP Status Code 404: There was an error getting meeting information.")
     return list_of_meeting_participants
@@ -901,7 +950,7 @@ def test_get_participants(meet_id=None, meet_instance=None, meet_topic=None, tok
     the_built_url = base_url + str(meet_instance) + endpoint
     if token_arg:
         the_built_url += '?next_page_token=' + str(token_arg)
-    print("ZOOM URL - " + str(the_built_url))
+    # print("ZOOM URL - " + str(the_built_url))
     # Get the first page
     # print("token_arg?", token_arg)
     # print("built_url?", the_built_url)
@@ -1086,6 +1135,8 @@ def store_webinar_participants():
     webinar_participants_wks.cell("C1").set_text_format("bold", True)
     webinar_participants_wks.cell("D1").set_text_format("bold", True)
     webinar_participants_wks.cell("E1").set_text_format("bold", True)
+    webinar_participants_wks.cell("F1").set_text_format("bold", True)
+    webinar_participants_wks.cell("G1").set_text_format("bold", True)
     
     # sort sheet by email addresses
     webinar_participants_wks.sort_range(start='A2', end='F10000', basecolumnindex=0, sortorder='ASCENDING')
@@ -1171,6 +1222,8 @@ def store_meeting_participants():
     meeting_participants_wks.cell("C1").set_text_format("bold", True)
     meeting_participants_wks.cell("D1").set_text_format("bold", True)
     meeting_participants_wks.cell("E1").set_text_format("bold", True)
+    meeting_participants_wks.cell("F1").set_text_format("bold", True)
+    meeting_participants_wks.cell("G1").set_text_format("bold", True)
     
     # sort sheet by email addresses
     meeting_participants_wks.sort_range(start='A2', end='F10000', basecolumnindex=0, sortorder='ASCENDING')
