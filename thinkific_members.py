@@ -1,16 +1,12 @@
 """
-Get a list of everyone who is currently signed up as a student/member
+Import main() function and lists from ua_meetings_webinars.py
+to get data about meetings/webinars registrants/participants
 
-How to use the Zoom API
-1. Use the Meeting ID to get Meeting/ Webinar Info in order to get the UUID of each meeting instance
-2. Use the UUID to get the specific info for each separate meeting/webinar to get the participants
+Access Thinkific API to get all courses, students, and student enrollments.
 
-Can you get specific meeting information from more than 1 UUID at a time?
-How?
-Ex using Goal Hack meetings
-Can I create a function to get all of the instances of each weekly meeting
-Create a separate function calling the first to get the participants of all the meetings?
+Compare Zoom registrants/participants to Thinkific Members and return all non-members
 
+Store courses, students, enrollments, and non-members to Google Sheets
 """
 import requests
 import pygsheets
@@ -21,8 +17,8 @@ import os
 from datetime import datetime, date
 import time
 from pprint import pprint
-
-from UnlockAcademyZTM import ua_meetings_webinars
+from pygsheets.datarange import DataRange
+import ua_meetings_webinars
 
 # THINKIFIC_API_KEY = os.environ.get('THINKIFIC_API_KEY')
 # THINKIFIC_SUBDOMAIN = os.environ.get('THINKIFIC_SUBDOMAIN')
@@ -34,12 +30,13 @@ from UnlockAcademyZTM import ua_meetings_webinars
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly', 'https://www.googleapis.com/auth/drive',
           'https://www.googleapis.com/auth/drive.file']
 
-
-with open('credentials.json') as source:
+script_directory = os.path.dirname(os.path.abspath(__file__))
+credentials_file = os.path.join(script_directory, 'credentials.json')
+with open(credentials_file) as source:
     info = json.load(source)
 credentials = service_account.Credentials.from_service_account_info(info)
 #   authorize Python Sheets access to Google Sheets
-client = pygsheets.authorize(service_account_file='credentials.json')
+client = pygsheets.authorize(service_account_file=credentials_file)
 
 
 ua_meetings_webinars.main()
@@ -195,7 +192,8 @@ def get_members(page_num=1):  # page_num=1
         #     member_last_name = member_name_split[1]
         member = {"email": member["email"],
                   "first_name": member["first_name"],
-                  "last_name": member["last_name"]
+                  "last_name": member["last_name"],
+                  "student_id": member["id"]
                   }
         list_of_members.append(member)
         
@@ -217,15 +215,6 @@ def get_student_enrollments(page_num=1):  # page_num=1
     """
     Function to get all Students and the classes they are enrolled in
     """
-    # TODO: How else can I automate pagination??
-    #  1. Use next_page until next_page=null
-    #  2. Use total_pages until current_page = total_pages
-    #       25 results per page if param not specified
-    #       Issue - Connection Error after so many pages (32 pages...36 pages...231 pages)
-    #  3. Change params limit equal to total_items
-    #       Issue - params required in order to get total_items, no way to get total_items beforehand
-    #  4. Change limit to 120, to only get the rate limit, then use the sleep code in between each loop
-    #  Other things to try
     
     # page_num = 1
     params = (
@@ -504,12 +493,16 @@ def store_thinkific_members():
     thinkific_wks.replace("NaN", replacement="", matchEntireCell=True)
     
     #   format the headers in bold
-    thinkific_wks.cell("A1").set_text_format("bold", True)
-    thinkific_wks.cell("B1").set_text_format("bold", True)
-    thinkific_wks.cell("C1").set_text_format("bold", True)
+    # thinkific_wks.cell("A1").set_text_format("bold", True)
+    # thinkific_wks.cell("B1").set_text_format("bold", True)
+    # thinkific_wks.cell("C1").set_text_format("bold", True)
+    
+    bold_cell = thinkific_wks.cell('A1')
+    bold_cell.set_text_format('bold', True)
+    DataRange('A1', 'L1', worksheet=thinkific_wks).apply_format(bold_cell)
 
     # sort sheet by email addresses
-    thinkific_wks.sort_range(start='A2', end='D50000', basecolumnindex=1, sortorder='ASCENDING')
+    thinkific_wks.sort_range(start='A2', end='L50000', basecolumnindex=1, sortorder='ASCENDING')
     
     #   Share spreadsheet with read only access to anyone with the link
     thinkific_members_sheet.share('', role='reader', type='anyone')
@@ -535,9 +528,6 @@ def store_student_enrollments():
     student_enrollments_wks.set_dataframe(student_enrollments_df, start=(1, 1), copy_index=False, copy_head=True,
                                           extend=True)
     
-    # change NaN values to blanks
-    student_enrollments_wks.replace("NaN", replacement="", matchEntireCell=True)
-    
     #   format the headers in bold
     # student_enrollments_wks.cell("A1").set_text_format("bold", True)
     # student_enrollments_wks.cell("B1").set_text_format("bold", True)
@@ -548,8 +538,16 @@ def store_student_enrollments():
     # student_enrollments_wks.cell("G1").set_text_format("bold", True)
     # student_enrollments_wks.cell("H1").set_text_format("bold", True)
     # student_enrollments_wks.cell("I1").set_text_format("bold", True)
+
+    bold_cell = student_enrollments_wks.cell('A1')
+    bold_cell.set_text_format('bold', True)
+    DataRange('A1', 'L1', worksheet=student_enrollments_wks).apply_format(bold_cell)
+   
+    # change NaN values to blanks
+    student_enrollments_wks.replace("NaN", replacement="", matchEntireCell=True)
+
     # sort sheet by email addresses
-    student_enrollments_wks.sort_range(start='A2', end='D50000', basecolumnindex=0, sortorder='ASCENDING')
+    student_enrollments_wks.sort_range(start='A2', end='L50000', basecolumnindex=0, sortorder='ASCENDING')
     
     #   Share spreadsheet with read only access to anyone with the link
     student_enrollments_sheet.share('', role='reader', type='anyone')
