@@ -465,6 +465,9 @@ def store_thinkific_courses():
     
     # sort sheet by email addresses
     thinkific_courses_wks.sort_range(start='A2', end='D50000', basecolumnindex=0, sortorder='ASCENDING')
+
+    # set column width to match content width
+    thinkific_courses_wks.adjust_column_width(start=1, end=10, pixel_size=None)
     
     #   Share spreadsheet with read only access to anyone with the link
     thinkific_courses_sheet.share('', role='reader', type='anyone')
@@ -503,6 +506,9 @@ def store_thinkific_members():
 
     # sort sheet by email addresses
     thinkific_wks.sort_range(start='A2', end='L50000', basecolumnindex=1, sortorder='ASCENDING')
+
+    # set column width to match content width
+    thinkific_wks.adjust_column_width(start=1, end=10, pixel_size=None)
     
     #   Share spreadsheet with read only access to anyone with the link
     thinkific_members_sheet.share('', role='reader', type='anyone')
@@ -539,19 +545,21 @@ def store_student_enrollments():
     # student_enrollments_wks.cell("H1").set_text_format("bold", True)
     # student_enrollments_wks.cell("I1").set_text_format("bold", True)
 
-    bold_cell = student_enrollments_wks.cell('A1')
-    bold_cell.set_text_format('bold', True)
-    DataRange('A1', 'L1', worksheet=student_enrollments_wks).apply_format(bold_cell)
+    # bold_cell = student_enrollments_wks.cell('A1')
+    # bold_cell.set_text_format('bold', True)
+    # DataRange('A1', 'L1', worksheet=student_enrollments_wks).apply_format(bold_cell)
    
     # change NaN values to blanks
     student_enrollments_wks.replace("NaN", replacement="", matchEntireCell=True)
 
     # sort sheet by email addresses
     student_enrollments_wks.sort_range(start='A2', end='L50000', basecolumnindex=0, sortorder='ASCENDING')
-    
+
+    # set column width to match content width
+    student_enrollments_wks.adjust_column_width(start=1, end=10, pixel_size=None)
+
     #   Share spreadsheet with read only access to anyone with the link
     student_enrollments_sheet.share('', role='reader', type='anyone')
-    
     #   print the direct link to the spreadsheet for the user running the code to access
     print("The UA Student Enrollments List can be found here: ", student_enrollments_sheet.url)
 
@@ -585,10 +593,12 @@ def store_non_members():
 
     # sort sheet by email addresses
     non_members_wks.sort_range(start='A2', end='D50000', basecolumnindex=1, sortorder='ASCENDING')
-    
+
+    # set column width to match content width
+    non_members_wks.adjust_column_width(start=1, end=10, pixel_size=None)
+
     #   Share spreadsheet with read only access to anyone with the link
     non_members_sheet.share('', role='reader', type='anyone')
-    
     #   print the direct link to the spreadsheet for the user running the code to access
     print("The Non Members List can be found here: ", non_members_sheet.url)
     
