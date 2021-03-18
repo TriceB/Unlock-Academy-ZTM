@@ -83,8 +83,8 @@ def main():
 
     # print("Webinar Registrants")
     # pprint(list_of_webinar_registrants)
-    print("Webinar Instances")
-    pprint(list_of_webinar_instances)
+    # print("Webinar Instances")
+    # pprint(list_of_webinar_instances)
 
     web_registrants_and_instances_time = time.perf_counter()
     print("Get Webinar Registrants & Instances Run Time --> " + str(web_registrants_and_instances_time) +
@@ -140,8 +140,8 @@ def main():
     for meeting in meetings_with_participants:
         get_meeting_instances(meeting["meeting_id"], meeting["meeting_topic"])
 
-    print("LIST OF MEETING INSTANCES")
-    pprint(list_of_meeting_instances)
+    # print("LIST OF MEETING INSTANCES")
+    # pprint(list_of_meeting_instances)
 
     meeting_instances_time = time.perf_counter()
     print("Get Meeting Instances Run Time --> " + str(meeting_instances_time) +
@@ -172,8 +172,8 @@ def main():
                 get_meeting_participants(meeting["meeting_id"], instance, meeting["meeting_topic"], instance_date_time)
                 # test_get_participants(meeting["meeting_id"], instance, meeting["meeting_topic"])
 
-    print("Meeting Participants")
-    pprint(list_of_meeting_participants)
+    # print("Meeting Participants")
+    # pprint(list_of_meeting_participants)
 
     meeting_participants_time = time.perf_counter()
     print("Get Meeting Participants Run Time --> " + str(meeting_participants_time) +
@@ -206,9 +206,10 @@ def main():
     print("Get Webinar Participants Run Time --> " + str(webinar_participants_time) +
           " Current Total Time --> " + str(webinar_participants_time - start_time))
 
-    print("Webinar Participants")
-    pprint(list_of_webinar_participants)
+    # print("Webinar Participants")
+    # pprint(list_of_webinar_participants)
     
+    pd.set_option("display.max_rows", None, "display.max_columns", None)
     store_meetings_webinars()
     store_webinar_registrants()
     store_webinar_participants()
@@ -1054,8 +1055,12 @@ def store_meetings_webinars():
     meetings_wks.cell("E1").set_text_format("bold", True)
     
     # sort sheet by meeting/webinar topic
-    webinars_wks.sort_range(start='A2', end='F10000', basecolumnindex=0, sortorder='ASCENDING')
-    meetings_wks.sort_range(start='A2', end='F10000', basecolumnindex=0, sortorder='ASCENDING')
+    webinars_wks.sort_range(start='A2', end='L10000', basecolumnindex=0, sortorder='ASCENDING')
+    meetings_wks.sort_range(start='A2', end='L10000', basecolumnindex=0, sortorder='ASCENDING')
+    
+    # set column width to match content width
+    webinars_wks.adjust_column_width(start=1, end=10, pixel_size=None)
+    meetings_wks.adjust_column_width(start=1, end=10, pixel_size=None)
     
     #   Share spreadsheet with read only access to anyone with the link
     meetings_webinar_sheet.share('', role='reader', type='anyone')
@@ -1096,8 +1101,11 @@ def store_webinar_registrants():
     webinar_registrants_wks.cell("E1").set_text_format("bold", True)
     
     # sort sheet by email addresses
-    webinar_registrants_wks.sort_range(start='A2', end='F10000', basecolumnindex=0, sortorder='ASCENDING')
-
+    webinar_registrants_wks.sort_range(start='A2', end='L10000', basecolumnindex=0, sortorder='ASCENDING')
+    
+    # set column width to match content width
+    webinar_registrants_wks.adjust_column_width(start=1, end=10, pixel_size=None)
+    
     #   Share spreadsheet with read only access to anyone with the link
     webinar_registrants_sheet.share('', role='reader', type='anyone')
     #   print the direct link to the spreadsheet for the user running the code to access
@@ -1122,7 +1130,7 @@ def store_webinar_participants():
     # webinar_participants = get_web_reg()
     # turn the students info into a dataframe to load into Google Sheets
     webinar_participants_df = pd.DataFrame(list_of_webinar_participants)  # , columns=['Participant Email Address', 'Participant First Name', 'Participant Last Name']
-    
+    # print(webinar_participants_df.to_string(index=False))
     # start entering the data in the sheet at row 1, column 1
     webinar_participants_wks.set_dataframe(webinar_participants_df, start=(1, 1), copy_index=False, copy_head=True, escape_formulae=True)
     
@@ -1139,7 +1147,10 @@ def store_webinar_participants():
     webinar_participants_wks.cell("G1").set_text_format("bold", True)
     
     # sort sheet by email addresses
-    webinar_participants_wks.sort_range(start='A2', end='F10000', basecolumnindex=0, sortorder='ASCENDING')
+    webinar_participants_wks.sort_range(start='A2', end='L10000', basecolumnindex=0, sortorder='ASCENDING')
+
+    # set column width to match content width
+    webinar_participants_wks.adjust_column_width(start=1, end=10, pixel_size=None)
     
     #   Share spreadsheet with read only access to anyone with the link
     webinar_participants_sheet.share('', role='reader', type='anyone')
@@ -1181,7 +1192,10 @@ def store_meeting_registrants():
     meeting_registrants_wks.cell("E1").set_text_format("bold", True)
     
     # sort sheet by email addresses
-    meeting_registrants_wks.sort_range(start='A2', end='F10000', basecolumnindex=0, sortorder='ASCENDING')
+    meeting_registrants_wks.sort_range(start='A2', end='L10000', basecolumnindex=0, sortorder='ASCENDING')
+
+    # set column width to match content width
+    meeting_registrants_wks.adjust_column_width(start=1, end=10, pixel_size=None)
     
     #   Share spreadsheet with read only access to anyone with the link
     meeting_registrants_sheet.share('', role='reader', type='anyone')
@@ -1226,10 +1240,13 @@ def store_meeting_participants():
     meeting_participants_wks.cell("G1").set_text_format("bold", True)
     
     # sort sheet by email addresses
-    meeting_participants_wks.sort_range(start='A2', end='F10000', basecolumnindex=0, sortorder='ASCENDING')
+    meeting_participants_wks.sort_range(start='A2', end='L10000', basecolumnindex=0, sortorder='ASCENDING')
     
     #   Share spreadsheet with read only access to anyone with the link
     meeting_participants_sheet.share('', role='reader', type='anyone')
+
+    # set column width to match content width
+    meeting_participants_wks.adjust_column_width(start=1, end=10, pixel_size=None)
     
     #   print the direct link to the spreadsheet for the user running the code to access
     print("The UA Meeting Participants List can be found here: ", meeting_participants_sheet.url)
